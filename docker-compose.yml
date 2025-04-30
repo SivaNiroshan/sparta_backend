@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  eurekaserver:
+    build:
+      context: ./eurekaserver
+    ports:
+      - "8761:8761"
+    networks:
+      - backend-network
+
+  gatewayservice:
+    build:
+      context: ./gatewayservice
+    ports:
+      - "8000:8000"
+    depends_on:
+      - eurekaserver
+    networks:
+      - backend-network
+
+  userservice:
+    build:
+      context: ./userservice
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eurekaserver
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
