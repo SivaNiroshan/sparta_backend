@@ -1,34 +1,53 @@
 version: '3.8'
 
 services:
-  eurekaserver:
+  eureka-server:
     build:
-      context: ./eurekaserver
+      context: ./EurekaServer
+      dockerfile: Dockerfile
     ports:
       - "8761:8761"
     networks:
-      - backend-network
+      - microservice-network
+    container_name: eureka-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  gatewayservice:
+  user-service:
     build:
-      context: ./gatewayservice
-    ports:
-      - "8000:8000"
-    depends_on:
-      - eurekaserver
-    networks:
-      - backend-network
-
-  userservice:
-    build:
-      context: ./userservice
+      context: ./UserService
+      dockerfile: Dockerfile
     ports:
       - "8081:8081"
-    depends_on:
-      - eurekaserver
+    environment:
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
-      - backend-network
+      - microservice-network
+    container_name: user-service
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  gateway-service:
+    build:
+      context: ./GatewayService
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - microservice-network
+    container_name: gateway-service
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      user-service:
+        condition: service_started
 
 networks:
-  backend-network:
+  microservice-network:
     driver: bridge
