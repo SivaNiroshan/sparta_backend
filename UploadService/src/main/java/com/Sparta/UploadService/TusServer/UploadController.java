@@ -26,6 +26,8 @@ public class UploadController {
     private final Path storageDir;
     private final Map<String, TusFile> fileMap = new HashMap<>();
 
+    private boolean paused = false;
+
 
 
     @Autowired
@@ -107,11 +109,14 @@ public class UploadController {
         return ResponseEntity.ok().headers(headers).build();
     }
 
+
+
     @RequestMapping(method = RequestMethod.PATCH, value = "/{uuid}")
     public ResponseEntity<?> processPatch(@PathVariable String uuid,
                                           @RequestHeader("Upload-Offset") Integer offset,
                                           @RequestHeader("Content-Length") Integer contentLength,
                                           @RequestHeader("Content-Type") String contentType,
+                                          @RequestHeader(value = "Resumed-Status", required = false) Boolean resumedStatus,
                                           InputStream inputStream) throws IOException, InterruptedException {
 
         if (!"application/offset+octet-stream".equals(contentType)) {
@@ -127,13 +132,19 @@ public class UploadController {
 
         Path filePath = storageDir.resolve(file.getName());
 
-        final int BUFFER_SIZE = 10 * 1024 * 1024;
+        final int BUFFER_SIZE = 2 * 1024 * 1024;
+
+        // Create exactly two reusable buffers
+        byte[] bufferA = new byte[BUFFER_SIZE];
+        byte[] bufferB = new byte[BUFFER_SIZE];
+
+        // Queues to manage buffers
         final BlockingQueue<byte[]> fullBuffers = new LinkedBlockingQueue<>();
         final BlockingQueue<byte[]> emptyBuffers = new LinkedBlockingQueue<>();
 
-        // Initialize two reusable buffers
-        emptyBuffers.put(new byte[BUFFER_SIZE]);
-        emptyBuffers.put(new byte[BUFFER_SIZE]);
+        // Add the two buffers to the pool initially
+        emptyBuffers.put(bufferA);
+        emptyBuffers.put(bufferB);
 
         // Writer thread
         Thread writerThread = new Thread(() -> {
@@ -142,9 +153,13 @@ public class UploadController {
 
                 while (true) {
                     byte[] buffer = fullBuffers.take();
-                    if (buffer.length == 0) break; // poison pill = end of stream
+                    if (buffer.length == 0) break; // poison pill
+
                     out.write(buffer, 0, buffer.length);
-                    emptyBuffers.put(new byte[BUFFER_SIZE]); // get new clean buffer
+
+                    // Reuse buffer
+                    Arrays.fill(buffer, (byte) 0);
+                    emptyBuffers.put(buffer);
                 }
             } catch (IOException | InterruptedException e) {
                 throw new RuntimeException("Error writing to file", e);
@@ -154,22 +169,25 @@ public class UploadController {
         writerThread.start();
 
         int totalBytes = 0;
+
         try {
             while (true) {
-                byte[] buffer = emptyBuffers.take();
+                byte[] buffer = emptyBuffers.take(); // get reusable buffer
                 int read = inputStream.read(buffer);
+
                 if (read == -1) break;
 
                 totalBytes += read;
 
-                // Copy exact read size to avoid writing extra empty bytes
                 byte[] exact = new byte[read];
                 System.arraycopy(buffer, 0, exact, 0, read);
                 fullBuffers.put(exact);
+
             }
 
-            fullBuffers.put(new byte[0]); // poison pill to stop writer thread
+            fullBuffers.put(new byte[0]); // poison pill
             writerThread.join(); // wait for writer to finish
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return ResponseEntity.status(500).body("Thread interrupted");
@@ -182,10 +200,9 @@ public class UploadController {
         headers.set("Tus-Resumable", "1.0.0");
         headers.set("Access-Control-Expose-Headers", "Upload-Offset, Tus-Resumable");
 
-
-
         return ResponseEntity.noContent().headers(headers).build();
     }
+
 
 
     @GetMapping("/{uuid}")
