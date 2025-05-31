@@ -1,5 +1,6 @@
 package com.Sparta.UploadService.TusServer;
 
+import com.Sparta.UploadService.TusServer.Helpers.PausedResumeHandler;
 import com.Sparta.UploadService.TusServer.model.MetaRequest;
 import com.Sparta.UploadService.TusServer.model.TusFile;
 import jakarta.annotation.PostConstruct;
@@ -22,6 +23,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 @RestController
 @RequestMapping("/upload")
 public class UploadController {
+
+    @Autowired
+    private PausedResumeHandler pausedResumeHandler;
 
     private final Path storageDir;
     private final Map<String, TusFile> fileMap = new HashMap<>();
@@ -109,6 +113,24 @@ public class UploadController {
         return ResponseEntity.ok().headers(headers).build();
     }
 
+    @PostMapping("/{uuid}/pause")
+    public ResponseEntity<?> pauseUpload(@PathVariable String uuid) {
+        TusFile file = fileMap.get(uuid);
+        if (file == null) return ResponseEntity.notFound().build();
+
+        pausedResumeHandler.pause();
+        return ResponseEntity.ok("Upload paused");
+    }
+
+    @PostMapping("/{uuid}/resume")
+    public ResponseEntity<?> resumeUpload(@PathVariable String uuid) {
+        TusFile file = fileMap.get(uuid);
+        if (file == null) return ResponseEntity.notFound().build();
+
+        pausedResumeHandler.resume();
+        return ResponseEntity.ok("Upload resumed");
+    }
+
 
 
     @RequestMapping(method = RequestMethod.PATCH, value = "/{uuid}")
@@ -116,7 +138,6 @@ public class UploadController {
                                           @RequestHeader("Upload-Offset") Integer offset,
                                           @RequestHeader("Content-Length") Integer contentLength,
                                           @RequestHeader("Content-Type") String contentType,
-                                          @RequestHeader(value = "Resumed-Status", required = false) Boolean resumedStatus,
                                           InputStream inputStream) throws IOException, InterruptedException {
 
         if (!"application/offset+octet-stream".equals(contentType)) {
@@ -138,6 +159,7 @@ public class UploadController {
         byte[] bufferA = new byte[BUFFER_SIZE];
         byte[] bufferB = new byte[BUFFER_SIZE];
 
+
         // Queues to manage buffers
         final BlockingQueue<byte[]> fullBuffers = new LinkedBlockingQueue<>();
         final BlockingQueue<byte[]> emptyBuffers = new LinkedBlockingQueue<>();
@@ -145,6 +167,9 @@ public class UploadController {
         // Add the two buffers to the pool initially
         emptyBuffers.put(bufferA);
         emptyBuffers.put(bufferB);
+
+        Thread currentThread = Thread.currentThread();
+        pausedResumeHandler.setProcessingThread(currentThread);
 
         // Writer thread
         Thread writerThread = new Thread(() -> {
@@ -169,9 +194,22 @@ public class UploadController {
         writerThread.start();
 
         int totalBytes = 0;
+        long pauseStart = 0;
 
         try {
             while (true) {
+                if (pausedResumeHandler.isPaused()) {
+                    pauseStart = System.currentTimeMillis();
+                    synchronized (pausedResumeHandler) {
+                        pausedResumeHandler.wait(1800000); // 30 minutes
+                        if (pausedResumeHandler.isPaused() &&
+                                (System.currentTimeMillis() - pauseStart > 1800000)) {
+                            // 30 minutes passed
+                            //file.failed(); // Custom logic
+                            return ResponseEntity.status(410).body("Upload expired due to long pause");
+                        }
+                    }
+                }
                 byte[] buffer = emptyBuffers.take(); // get reusable buffer
                 int read = inputStream.read(buffer);
 
