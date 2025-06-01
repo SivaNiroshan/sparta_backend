@@ -1,5 +1,6 @@
 package com.Sparta.UploadService.TusServer;
 
+import com.Sparta.UploadService.TusServer.Helpers.DeleteHandler;
 import com.Sparta.UploadService.TusServer.Helpers.PausedResumeHandler;
 import com.Sparta.UploadService.TusServer.model.MetaRequest;
 import com.Sparta.UploadService.TusServer.model.TusFile;
@@ -18,6 +19,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -27,10 +29,16 @@ public class UploadController {
     @Autowired
     private PausedResumeHandler pausedResumeHandler;
 
+    @Autowired
+    private DeleteHandler deleteHandler;
+
     private final Path storageDir;
     private final Map<String, TusFile> fileMap = new HashMap<>();
 
-    private boolean paused = false;
+
+
+
+
 
 
 
@@ -178,18 +186,33 @@ public class UploadController {
 
                 while (true) {
                     byte[] buffer = fullBuffers.take();
+
                     if (buffer.length == 0) break; // poison pill
 
                     out.write(buffer, 0, buffer.length);
+                    out.flush(); // Write to disk immediately
 
-                    // Reuse buffer
                     Arrays.fill(buffer, (byte) 0);
                     emptyBuffers.put(buffer);
+
+                    // If pause requested, drain remaining buffers and flush
+                    if (pausedResumeHandler.isPaused() && pausedResumeHandler.isFlushRequested()) {
+                        while (!fullBuffers.isEmpty()) {
+                            byte[] extra = fullBuffers.poll(100, TimeUnit.MILLISECONDS);
+                            if (extra != null && extra.length > 0) {
+                                out.write(extra, 0, extra.length);
+                                out.flush();
+                                emptyBuffers.put(extra);
+                            }
+                        }
+                        pausedResumeHandler.resetFlushRequested(false); // reset signal
+                    }
                 }
             } catch (IOException | InterruptedException e) {
                 throw new RuntimeException("Error writing to file", e);
             }
         });
+
 
         writerThread.start();
 
@@ -200,12 +223,18 @@ public class UploadController {
             while (true) {
                 if (pausedResumeHandler.isPaused()) {
                     pauseStart = System.currentTimeMillis();
-                    synchronized (pausedResumeHandler) {
-                        pausedResumeHandler.wait(1800000); // 30 minutes
+                    synchronized (pausedResumeHandler.getPauseLock()) {
+                        pausedResumeHandler.getPauseLock().wait(1800000); // 30 minutes
                         if (pausedResumeHandler.isPaused() &&
                                 (System.currentTimeMillis() - pauseStart > 1800000)) {
                             // 30 minutes passed
-                            //file.failed(); // Custom logic
+                            deleteHandler.handleFailure( Thread.currentThread(),
+                                    writerThread,
+                                    bufferA,
+                                    bufferB,
+                                    filePath,
+                                    fullBuffers,
+                                    emptyBuffers);
                             return ResponseEntity.status(410).body("Upload expired due to long pause");
                         }
                     }

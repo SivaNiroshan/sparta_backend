@@ -1,36 +1,65 @@
 package com.Sparta.UploadService.TusServer.Helpers;
 
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 
+@Getter
 @Component
 public class PausedResumeHandler {
+    private final Object pauseLock = new Object(); // final monitor
+
     private volatile boolean paused = false;
+    private volatile boolean flushRequested = false;
     private long pauseStartTime;
     private Thread processingThread;
 
-    public synchronized void pause() {
-        this.paused = true;
-        this.pauseStartTime = System.currentTimeMillis();
-    }
-
-    public synchronized void resume() {
-        this.paused = false;
-        notifyAll(); // Wakes up the thread waiting in `processPatch`
-        if (processingThread != null) {
-            processingThread.interrupt(); // In case it's sleeping or waiting
+    public void pause() {
+        synchronized (pauseLock) {
+            this.paused = true;
+            this.flushRequested = true;
+            this.pauseStartTime = System.currentTimeMillis();
         }
     }
 
-    public synchronized boolean isPaused() {
-        return paused;
+    public void resume() {
+        synchronized (pauseLock) {
+            this.paused = false;
+            this.flushRequested = false;
+            pauseLock.notifyAll(); // safer and clearer
+        }
+
+        if (processingThread != null) {
+            processingThread.interrupt(); // optional
+        }
     }
 
-    public synchronized long getPausedDurationMillis() {
-        return System.currentTimeMillis() - pauseStartTime;
+    public boolean isPaused() {
+        synchronized (pauseLock) {
+            return paused;
+        }
     }
+
+    public boolean isFlushRequested() {
+        synchronized (pauseLock) {
+            return flushRequested;
+        }
+    }
+
+    public void resetFlushRequested(boolean reset) {
+        synchronized (pauseLock) {
+            this.flushRequested = reset;
+        }
+    }
+
+    public long getPausedDurationMillis() {
+        synchronized (pauseLock) {
+            return System.currentTimeMillis() - pauseStartTime;
+        }
+    }
+
+
 
     public void setProcessingThread(Thread thread) {
         this.processingThread = thread;
     }
 }
-

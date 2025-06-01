@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/Helpers/PausedResumeHandler.java" afterDir="false" />
+    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="upload service pause and Resume basic handled">
+      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/Helpers/DeleteHandler.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/Helpers/PausedResumeHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/Helpers/PausedResumeHandler.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/UploadController.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/UploadController.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -129,7 +131,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748525821160</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="upload service pause and Resume basic handled">
+      <option name="closed" value="true" />
+      <created>1748693730302</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1748693730302</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -158,7 +168,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="basic upload service from get data from front end" />
     <MESSAGE value="Upload service updated with buffer pooling , reusing, multi threading" />
-    <option name="LAST_COMMIT_MESSAGE" value="Upload service updated with buffer pooling , reusing, multi threading" />
+    <MESSAGE value="upload service pause and Resume basic handled" />
+    <option name="LAST_COMMIT_MESSAGE" value="upload service pause and Resume basic handled" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
