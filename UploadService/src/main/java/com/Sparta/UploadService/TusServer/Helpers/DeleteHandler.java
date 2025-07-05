@@ -8,15 +8,39 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class DeleteHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(DeleteHandler.class);
 
-    public void handleFailure(Thread processingThread,
+    // Track active threads and queues
+    public final Map<String, UploadContext> contextMap = new ConcurrentHashMap<>();
+
+    public void registerContext(String uuid, UploadContext ctx) {
+        contextMap.put(uuid, ctx);
+    }
+
+    public void cancelUpload(String uuid) {
+        UploadContext ctx = contextMap.remove(uuid);
+        if (ctx == null) return;
+
+        safeInterrupt(ctx.readerThread, "Reader thread");
+        safeInterrupt(ctx.writerThread, "Writer thread");
+
+        clearBuffer(ctx.bufferA);
+        clearBuffer(ctx.bufferB);
+
+        ctx.fullBuffers.clear();
+        ctx.emptyBuffers.clear();
+
+        deleteFile(ctx.filePath);
+    }
+
+    public void handleFailure(Thread readerThread,
                               Thread writerThread,
                               byte[] bufferA,
                               byte[] bufferB,
@@ -24,7 +48,7 @@ public class DeleteHandler {
                               BlockingQueue<byte[]> fullBuffers,
                               BlockingQueue<byte[]> emptyBuffers) {
 
-        safeInterrupt(processingThread, "Processing thread");
+        safeInterrupt(readerThread, "Reader thread");
         safeInterrupt(writerThread, "Writer thread");
 
         clearBuffer(bufferA);
@@ -36,27 +60,35 @@ public class DeleteHandler {
         deleteFile(filePath);
     }
 
-    private void safeInterrupt(Thread thread, String threadName) {
+    private void safeInterrupt(Thread thread, String name) {
         if (thread != null && thread.isAlive()) {
             thread.interrupt();
-            logger.info("[DeleteHandler] {} interrupted.", threadName);
+            logger.info("[DeleteHandler] {} interrupted", name);
         }
     }
 
     private void clearBuffer(byte[] buffer) {
-        if (buffer != null) {
-            Arrays.fill(buffer, (byte) 0);
-        }
+        if (buffer != null) Arrays.fill(buffer, (byte) 0);
     }
 
-    private void deleteFile(Path filePath) {
+    public void deleteFile(Path filePath) {
         try {
             if (filePath != null && Files.exists(filePath)) {
                 Files.delete(filePath);
                 logger.info("[DeleteHandler] File deleted: {}", filePath);
             }
         } catch (IOException e) {
-            logger.error("[DeleteHandler] Failed to delete file: {}", filePath, e);
+            logger.error("[DeleteHandler] File deletion failed: {}", filePath, e);
         }
+    }
+
+    public static class UploadContext {
+        public Thread readerThread;
+        public Thread writerThread;
+        public byte[] bufferA;
+        public byte[] bufferB;
+        public Path filePath;
+        public BlockingQueue<byte[]> fullBuffers;
+        public BlockingQueue<byte[]> emptyBuffers;
     }
 }

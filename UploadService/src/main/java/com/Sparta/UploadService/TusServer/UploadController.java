@@ -1,5 +1,7 @@
 package com.Sparta.UploadService.TusServer;
 
+import com.Sparta.UploadService.Encoding.Implementation.AvEncoding;
+import com.Sparta.UploadService.Encoding.Interfaces.Encode;
 import com.Sparta.UploadService.TusServer.Helpers.DeleteHandler;
 import com.Sparta.UploadService.TusServer.Helpers.PausedResumeHandler;
 import com.Sparta.UploadService.TusServer.model.MetaRequest;
@@ -31,6 +33,9 @@ public class UploadController {
 
     @Autowired
     private DeleteHandler deleteHandler;
+
+    @Autowired
+    private Encode avEncoding;
 
     private final Path storageDir;
     private final Map<String, TusFile> fileMap = new HashMap<>();
@@ -101,7 +106,7 @@ public class UploadController {
         headers.set("Access-Control-Expose-Headers", "Location, Tus-Resumable");
         headers.set("Location", uuid.toString());
         headers.set("Tus-Resumable", "1.0.0");
-        System.out.println(uuid.toString());
+        System.out.println(uuid);
 
         return ResponseEntity.status(201).headers(headers).build();
     }
@@ -124,8 +129,10 @@ public class UploadController {
     @PostMapping("/{uuid}/pause")
     public ResponseEntity<?> pauseUpload(@PathVariable String uuid) {
         TusFile file = fileMap.get(uuid);
-        if (file == null) return ResponseEntity.notFound().build();
 
+        if (file == null) {
+            System.out.println("File not found for UUID: " + uuid);
+            return ResponseEntity.notFound().build();}
         pausedResumeHandler.pause();
         return ResponseEntity.ok("Upload paused");
     }
@@ -133,11 +140,28 @@ public class UploadController {
     @PostMapping("/{uuid}/resume")
     public ResponseEntity<?> resumeUpload(@PathVariable String uuid) {
         TusFile file = fileMap.get(uuid);
-        if (file == null) return ResponseEntity.notFound().build();
+        if (file == null) {
+            System.out.println("File not found for UUID: " + uuid);
+            return ResponseEntity.notFound().build();}
 
         pausedResumeHandler.resume();
         return ResponseEntity.ok("Upload resumed");
     }
+
+    @PostMapping("/{uuid}/cancel")
+    public ResponseEntity<?> cancelUpload(@PathVariable String uuid) {
+        TusFile file = fileMap.get(uuid);
+        if (file == null) return ResponseEntity.notFound().build();
+
+        try {
+            deleteHandler.cancelUpload(uuid);
+            fileMap.remove(uuid);
+            return ResponseEntity.ok("Upload canceled successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to cancel upload.");
+        }
+    }
+
 
 
 
@@ -179,6 +203,8 @@ public class UploadController {
         Thread currentThread = Thread.currentThread();
         pausedResumeHandler.setProcessingThread(currentThread);
 
+
+
         // Writer thread
         Thread writerThread = new Thread(() -> {
             try (OutputStream out = new BufferedOutputStream(
@@ -215,6 +241,18 @@ public class UploadController {
 
 
         writerThread.start();
+
+
+        DeleteHandler.UploadContext ctx = new DeleteHandler.UploadContext();
+        ctx.readerThread = Thread.currentThread();
+        ctx.writerThread = writerThread;
+        ctx.bufferA = bufferA;
+        ctx.bufferB = bufferB;
+        ctx.filePath = filePath;
+        ctx.fullBuffers = fullBuffers;
+        ctx.emptyBuffers = emptyBuffers;
+        deleteHandler.registerContext(uuid, ctx);
+
 
         int totalBytes = 0;
         long pauseStart = 0;
@@ -266,24 +304,42 @@ public class UploadController {
         headers.set("Upload-Offset", String.valueOf(file.getOffset()));
         headers.set("Tus-Resumable", "1.0.0");
         headers.set("Access-Control-Expose-Headers", "Upload-Offset, Tus-Resumable");
+        if(file.getOffset()== file.getUploadLength()) {
+            headers.set("Upload-Finished", "true");
+            // Start encoding in a separate thread
+            new Thread(() -> {
+                try {
+                    String originalName = file.getName();
+                    int dotIndex = originalName.lastIndexOf(".");
+                    String baseName = (dotIndex == -1) ? originalName : originalName.substring(0, dotIndex);
+                    String extension = (dotIndex == -1) ? ".mkv" : originalName.substring(dotIndex);
+                    String outputFileName = baseName + "_encoded" + extension;
+                    avEncoding.encode(filePath.toString(), outputFileName);
+                    deleteHandler.deleteFile(filePath);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
 
         return ResponseEntity.noContent().headers(headers).build();
     }
 
 
 
-    @GetMapping("/{uuid}")
-    public ResponseEntity<Resource> download(@PathVariable String uuid) throws IOException {
-        TusFile file = fileMap.get(uuid);
-        Path path = storageDir.resolve(uuid);
-
-        if (file == null || !Files.exists(path)) return ResponseEntity.notFound().build();
-
-        Resource resource = new UrlResource(path.toUri());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + uuid + "\"")
-                .body(resource);
-    }
+//    @GetMapping("/{uuid}")
+//    public ResponseEntity<Resource> download(@PathVariable String uuid) throws IOException {
+//        TusFile file = fileMap.get(uuid);
+//        Path path = storageDir.resolve(uuid);
+//
+//        if (file == null || !Files.exists(path)) return ResponseEntity.notFound().build();
+//
+//        Resource resource = new UrlResource(path.toUri());
+//        return ResponseEntity.ok()
+//                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + uuid + "\"")
+//                .body(resource);
+//    }
 
     private HttpHeaders setTusHeaders() {
         HttpHeaders headers = new HttpHeaders();

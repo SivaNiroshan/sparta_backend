@@ -28,9 +28,9 @@ public class PausedResumeHandler {
             pauseLock.notifyAll(); // safer and clearer
         }
 
-        if (processingThread != null) {
-            processingThread.interrupt(); // optional
-        }
+//        if (processingThread != null) {
+//            processingThread.interrupt(); // optional
+//        }
     }
 
     public boolean isPaused() {
