@@ -4,20 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="391e3804-84e3-4602-bd1b-831156233172" name="Changes" comment="intial commit">
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/controler/FriendController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/model/Friends.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/model/SignupRequest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/model/UserDetails.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/repository/FriendRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/repository/RegisterRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/service/FriendService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GatewayService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/GatewayService/src/main/resources/application.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/controler/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/controler/AuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/service/AuthService.java" beforeDir="false" afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/service/AuthService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UserService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/UserService/src/main/resources/application.properties" afterDir="false" />
-    </list>
+    <list default="true" id="391e3804-84e3-4602-bd1b-831156233172" name="Changes" comment="intial commit" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -27,8 +14,6 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Dockerfile" />
-        <option value="Class" />
-        <option value="Interface" />
       </list>
     </option>
   </component>
@@ -43,14 +28,14 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;SONARLINT_PRECOMMIT_ANALYSIS&quot;: &quot;false&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "SONARLINT_PRECOMMIT_ANALYSIS": "false",
+    "ignore.virus.scanning.warn.message": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="Application.UserServiceApplication">
     <configuration name="EurekaServerApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.sparta.EurekaServer.EurekaServerApplication" />
@@ -93,9 +78,9 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.GatewayServiceApplication" />
         <item itemvalue="Application.UserServiceApplication" />
         <item itemvalue="Application.EurekaServerApplication" />
-        <item itemvalue="Application.GatewayServiceApplication" />
       </list>
     </recent_temporary>
   </component>
@@ -116,15 +101,7 @@
       <option name="project" value="LOCAL" />
       <updated>1745984382594</updated>
     </task>
-    <task id="LOCAL-00002" summary="intial commit">
-      <option name="closed" value="true" />
-      <created>1746127658661</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1746127658661</updated>
-    </task>
-    <option name="localTasksCounter" value="3" />
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
