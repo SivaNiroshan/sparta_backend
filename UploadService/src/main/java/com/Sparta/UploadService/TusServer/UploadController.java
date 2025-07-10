@@ -98,7 +98,7 @@ public class UploadController {
         if (metaRequest != null) {
             file.setName(metaRequest.getName());
             file.setDescription(metaRequest.getDescription());
-            file.setDistributor(metaRequest.getDistributor());
+            file.setDistributor_id(metaRequest.getDistributor_id());
             file.setTimeline(metaRequest.getTimeline());
         }
 
