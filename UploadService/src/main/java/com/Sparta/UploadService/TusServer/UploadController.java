@@ -1,7 +1,8 @@
 package com.Sparta.UploadService.TusServer;
 
-import com.Sparta.UploadService.Encoding.Implementation.AvEncoding;
-import com.Sparta.UploadService.Encoding.Interfaces.Encode;
+
+import com.Sparta.UploadService.Rabbit.EncodingJobDTO;
+import com.Sparta.UploadService.Rabbit.EncodingJobProducer;
 import com.Sparta.UploadService.TusServer.Helpers.DeleteHandler;
 import com.Sparta.UploadService.TusServer.Helpers.PausedResumeHandler;
 import com.Sparta.UploadService.TusServer.model.MetaRequest;
@@ -35,7 +36,8 @@ public class UploadController {
     private DeleteHandler deleteHandler;
 
     @Autowired
-    private Encode avEncoding;
+    private EncodingJobProducer encodingJobProducer;
+
 
     private final Path storageDir;
     private final Map<String, TusFile> fileMap = new HashMap<>();
@@ -306,21 +308,16 @@ public class UploadController {
         headers.set("Access-Control-Expose-Headers", "Upload-Offset, Tus-Resumable");
         if(file.getOffset()== file.getUploadLength()) {
             headers.set("Upload-Finished", "true");
-            // Start encoding in a separate thread
-            new Thread(() -> {
-                try {
-                    String originalName = file.getName();
-                    int dotIndex = originalName.lastIndexOf(".");
-                    String baseName = (dotIndex == -1) ? originalName : originalName.substring(0, dotIndex);
-                    String extension = (dotIndex == -1) ? ".mkv" : originalName.substring(dotIndex);
-                    String outputFileName = baseName + "_encoded" + extension;
-                    avEncoding.encode(filePath.toString(), outputFileName);
-                    deleteHandler.deleteFile(filePath);
 
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
+            String originalName = file.getName();
+            int dotIndex = originalName.lastIndexOf(".");
+            String baseName = (dotIndex == -1) ? originalName : originalName.substring(0, dotIndex);
+            String extension = (dotIndex == -1) ? ".mkv" : originalName.substring(dotIndex);
+            String outputFileName = baseName + "_encoded" + extension;
+            //, (MetaRequest) file.clone()
+            encodingJobProducer.sendJob(new EncodingJobDTO(filePath.toString(), outputFileName));
+            fileMap.remove(uuid); // Remove from map after encoding job is sent
+
         }
 
         return ResponseEntity.noContent().headers(headers).build();

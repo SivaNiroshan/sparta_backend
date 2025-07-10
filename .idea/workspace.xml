@@ -5,7 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="uploading CRUD of upload and Encoding finish">
+      <change afterPath="$PROJECT_DIR$/Screen Recording 2025-04-23 141724_encoded.mp4" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobDTO.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobProducer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/RabbitMQConfig.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/UploadController.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/UploadController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
