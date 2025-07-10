@@ -4,17 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="uploading CRUD of upload and Encoding finish">
-      <change afterPath="$PROJECT_DIR$/Screen Recording 2025-04-23 141724_encoded.mp4" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobDTO.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobProducer.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/RabbitMQConfig.java" afterDir="false" />
+    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="queue service implemented">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobDTO.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/UploadController.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/UploadController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -196,7 +190,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751725611122</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="queue service implemented">
+      <option name="closed" value="true" />
+      <created>1752124444433</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1752124444434</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -230,7 +232,8 @@
     <MESSAGE value="upload service PauseResume Handler Modified, Delete Handler added" />
     <MESSAGE value="upload service CRUD for uploading finish" />
     <MESSAGE value="uploading CRUD of upload and Encoding finish" />
-    <option name="LAST_COMMIT_MESSAGE" value="uploading CRUD of upload and Encoding finish" />
+    <MESSAGE value="queue service implemented" />
+    <option name="LAST_COMMIT_MESSAGE" value="queue service implemented" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

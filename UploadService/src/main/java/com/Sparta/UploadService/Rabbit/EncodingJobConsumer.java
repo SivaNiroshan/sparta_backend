@@ -24,9 +24,8 @@ public class EncodingJobConsumer {
         System.out.println("Received job: " + job.getInputPath());
         try {
             avEncoding.encode(job.getInputPath(), job.getOutputPath());
-//            Files.deleteIfExists(Path.of(job.getInputPath())); // optional cleanup
             deleteHandler.deleteFile(Path.of(job.getInputPath())); // Use DeleteHandler for cleanup
-            //MetaRequest file=job.getFile();
+            MetaRequest file=job.getFile();
             System.out.println(" Encoding complete: " + job.getOutputPath());
         } catch (Exception e) {
             e.printStackTrace();

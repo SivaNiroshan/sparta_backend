@@ -314,8 +314,7 @@ public class UploadController {
             String baseName = (dotIndex == -1) ? originalName : originalName.substring(0, dotIndex);
             String extension = (dotIndex == -1) ? ".mkv" : originalName.substring(dotIndex);
             String outputFileName = baseName + "_encoded" + extension;
-            //, (MetaRequest) file.clone()
-            encodingJobProducer.sendJob(new EncodingJobDTO(filePath.toString(), outputFileName));
+            encodingJobProducer.sendJob(new EncodingJobDTO(filePath.toString(), outputFileName, (MetaRequest) file.clone()));
             fileMap.remove(uuid); // Remove from map after encoding job is sent
 
         }

@@ -16,15 +16,15 @@ public class EncodingJobDTO implements Serializable {
     private String outputPath;
 
 
-//    private MetaRequest file;
+    private MetaRequest file;
 
     // Constructors, getters, setters
     public EncodingJobDTO() {}
 
-    public EncodingJobDTO(String inputPath, String outputPath) {
+    public EncodingJobDTO(String inputPath, String outputPath,MetaRequest file) {
         this.inputPath = inputPath;
         this.outputPath = outputPath;
-//        this.file=file;
+        this.file=file;
     }
 
 
