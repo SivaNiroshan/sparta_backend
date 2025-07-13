@@ -11,35 +11,47 @@ import java.io.*;
 public class AvEncoding implements Encode {
 
     @Override
-    public void encode(String inputPath, String outputPath) throws Exception {
+    public void encode(String inputPath, String outputBasePath) throws Exception {
         File inputFile = new File(inputPath);
         long fileSizeMB = inputFile.length() / (1024 * 1024);
 
         // Auto-select CRF based on file size
         int crf = (fileSizeMB > 1000) ? 36 : (fileSizeMB > 500 ? 34 : 32);
 
-        // Auto-detect resolution (optional enhancement)
         String resolution = getResolution(inputPath);
-        int preset = 8; // configurable
-        int audioBitrate = 64; // in kbps
+        System.out.println("Detected resolution: " + resolution);
 
+        int inputHeight = Integer.parseInt(resolution.split("x")[1]);
+
+        int preset = 8;
+        int audioBitrate = 64;
         String ffmpegPath = getFfmpegPath();
 
-        String command = String.format("\"%s\" -i \"%s\" -c:v libsvtav1 -crf %d -preset %d -c:a libopus -b:a %dk -ac 2 \"%s\"",
-                ffmpegPath, inputPath, crf, preset, audioBitrate, outputPath);
+        int[] allHeights = {1080, 720, 480, 240};
 
-        System.out.println("Running FFmpeg command:\n" + command);
-        CommandLine cmdLine = CommandLine.parse(command);
-        DefaultExecutor executor = new DefaultExecutor();
-        executor.setExitValue(0);
+        for (int height : allHeights) {
+            if (inputHeight >= height) {
+                String outputPath = outputBasePath.replace(".mp4", "_" + height + "p.mp4");
 
-        int exit = executor.execute(cmdLine);
-        if (exit != 0) {
-            throw new RuntimeException("AV1 encoding failed with exit code: " + exit);
+                // Use scale while preserving aspect ratio
+                String command = String.format("\"%s\" -i \"%s\" -vf scale=-2:%d -c:v libsvtav1 -crf %d -preset %d -c:a libopus -b:a %dk -ac 2 \"%s\"",
+                        ffmpegPath, inputPath, height, crf, preset, audioBitrate, outputPath);
+
+                System.out.println("Running FFmpeg command:\n" + command);
+                CommandLine cmdLine = CommandLine.parse(command);
+                DefaultExecutor executor = new DefaultExecutor();
+                executor.setExitValue(0);
+
+                int exit = executor.execute(cmdLine);
+                if (exit != 0) {
+                    throw new RuntimeException("Encoding failed for " + height + "p with exit code: " + exit);
+                }
+
+                System.out.println("Encoded " + height + "p successfully: " + outputPath);
+            }
         }
-
-        System.out.println("Encoding completed successfully from " + inputPath + " to " + outputPath);
     }
+
 
     public  String replaceLastFfmpegWithFfprobe(String path) {
         String target = "ffmpeg";
