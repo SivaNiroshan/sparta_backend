@@ -21,14 +21,15 @@ public class VideoSplit {
 
         // Get only the file name from the given base path (e.g., SooraraiPottru_Aagasam_1080p.mp4)
         String fileName = new File(outputBasePath).getName();
-
+        // Remove extension
+        String fileNameNoExt = fileName.substring(0, fileName.lastIndexOf('.'));
         // Build the base directory prefix
         String prefixPath = "C:\\Users\\THABENDRA\\Desktop\\sparta_backend\\";
 
         // Now recreate full path for audio and video inputs
         String audioInput = prefixPath + fileName.replace(".mp4", "_encoded_" + encodedQualities.get(0) + "p.mp4");
         System.out.println("Audio Input"+audioInput);
-        String outputDir = prefixPath+"storage\\"+ "dash_output";
+        String outputDir = prefixPath+"storage\\"+ "dash_output"+fileNameNoExt;
         System.out.println("Output Directory :"+outputDir);
         new File(outputDir).mkdirs(); // create output folder
 
@@ -38,14 +39,14 @@ public class VideoSplit {
         for (int quality : encodedQualities) {
             String videoInput = prefixPath + fileName.replace(".mp4", "_encoded_" + quality + "p.mp4");
             System.out.println("Video input  PAth"+videoInput);
-            String videoOut = outputDir + File.separator + "video_" + quality + "p_dash.mp4";
+            String videoOut = outputDir + File.separator + fileNameNoExt+"video_" + quality + "p_dash.mp4";
             System.out.println("Video Output path"+videoOut);
             command.append(" input=\"").append(videoInput).append("\",stream=video,output=\"").append(videoOut).append("\"");
             System.out.println("Command0 for visual frame"+command);
         }
 
         // Add audio input (assumed to be from the highest quality)
-        String audioOut = outputDir + File.separator + "audio.mp4";
+        String audioOut = outputDir + File.separator+ fileNameNoExt + "audio.mp4";
         System.out.println("Audio Output"+audioOut);
         command.append(" input=\"").append(audioInput).append("\",stream=audio,output=\"").append(audioOut).append("\"");
         System.out.println("Command1 for audio "+command);

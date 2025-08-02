@@ -4,13 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="remove eureka client and encode multiple resolution">
-      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Dash/VideoSplit.java" afterDir="false" />
+    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="using dash protocol  video splitting">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Implementation/AvEncoding.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Implementation/AvEncoding.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Interfaces/Encode.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Interfaces/Encode.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SooraraiPottru_Aagasam_1080p_encoded_1080p.mp4" beforeDir="false" afterPath="$PROJECT_DIR$/SooraraiPottru_Aagasam_1080p_encoded_1080p.mp4" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SooraraiPottru_Aagasam_1080p_encoded_240p.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SooraraiPottru_Aagasam_1080p_encoded_480p.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SooraraiPottru_Aagasam_1080p_encoded_720p.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Dash/VideoSplit.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Dash/VideoSplit.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/dash_output/audio.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/dash_output/manifest.mpd" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/dash_output/video_1080p_dash.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/dash_output/video_240p_dash.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/dash_output/video_480p_dash.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/dash_output/video_720p_dash.mp4" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -226,7 +232,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752419134694</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="using dash protocol  video splitting">
+      <option name="closed" value="true" />
+      <created>1754142634089</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1754142634090</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -264,7 +278,8 @@
     <MESSAGE value="meta request serialized" />
     <MESSAGE value="meta data stored in local mongodb" />
     <MESSAGE value="remove eureka client and encode multiple resolution" />
-    <option name="LAST_COMMIT_MESSAGE" value="remove eureka client and encode multiple resolution" />
+    <MESSAGE value="using dash protocol  video splitting" />
+    <option name="LAST_COMMIT_MESSAGE" value="using dash protocol  video splitting" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
