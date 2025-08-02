@@ -4,12 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="meta data stored in local mongodb">
+    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="remove eureka client and encode multiple resolution">
+      <change afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Dash/VideoSplit.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/pom.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Implementation/AvEncoding.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Implementation/AvEncoding.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/UploadServiceApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/UploadServiceApplication.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Interfaces/Encode.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Encoding/Interfaces/Encode.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/Rabbit/EncodingJobConsumer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/java/com/Sparta/UploadService/TusServer/model/MetaRequest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,8 +20,8 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Class" />
         <option value="Interface" />
+        <option value="Class" />
       </list>
     </option>
   </component>
@@ -38,17 +39,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SONARLINT_PRECOMMIT_ANALYSIS": "false",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Users/THABENDRA/Desktop/sparta_backend/UploadService/bin/Dash executable/Linux",
-    "settings.editor.selected.configurable": "preferences.keymap"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SONARLINT_PRECOMMIT_ANALYSIS&quot;: &quot;false&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/THABENDRA/Desktop/sparta_backend/UploadService/bin/Dash executable/Linux&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\THABENDRA\Desktop\sparta_backend\UploadService\bin\Dash executable\Linux" />
@@ -217,7 +218,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752167400361</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="remove eureka client and encode multiple resolution">
+      <option name="closed" value="true" />
+      <created>1752419134694</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1752419134694</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -254,7 +263,8 @@
     <MESSAGE value="queue service implemented" />
     <MESSAGE value="meta request serialized" />
     <MESSAGE value="meta data stored in local mongodb" />
-    <option name="LAST_COMMIT_MESSAGE" value="meta data stored in local mongodb" />
+    <MESSAGE value="remove eureka client and encode multiple resolution" />
+    <option name="LAST_COMMIT_MESSAGE" value="remove eureka client and encode multiple resolution" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

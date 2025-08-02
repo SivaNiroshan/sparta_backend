@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Generated with https://github.com/shaka-project/shaka-packager version v3.4.2-c819dea-release-->
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT2S" type="static" mediaPresentationDuration="PT111.875S">
+  <Period id="0">
+    <AdaptationSet id="0" contentType="video" maxWidth="1920" maxHeight="1080" frameRate="12288/512" subsegmentAlignment="true" par="16:9">
+      <SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:MatrixCoefficients" value="1"/>
+      <SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:ColourPrimaries" value="1"/>
+      <SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:TransferCharacteristics" value="1"/>
+      <Representation id="0" bandwidth="2845116" codecs="av01.0.08M.08.0.110.01.01.01.0" mimeType="video/mp4" sar="1:1" width="1920" height="1080">
+        <BaseURL>video_1080p_dash.mp4</BaseURL>
+        <SegmentBase indexRange="834-1069" timescale="12288">
+          <Initialization range="0-833"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="1" bandwidth="1781398" codecs="av01.0.05M.08.0.110.01.01.01.0" mimeType="video/mp4" sar="1:1" width="1280" height="720">
+        <BaseURL>video_720p_dash.mp4</BaseURL>
+        <SegmentBase indexRange="834-1069" timescale="12288">
+          <Initialization range="0-833"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="2" bandwidth="1084301" codecs="av01.0.04M.08.0.110.01.01.01.0" mimeType="video/mp4" sar="1280:1281" width="854" height="480">
+        <BaseURL>video_480p_dash.mp4</BaseURL>
+        <SegmentBase indexRange="850-1085" timescale="12288">
+          <Initialization range="0-849"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="3" bandwidth="413585" codecs="av01.0.00M.08.0.110.01.01.01.0" mimeType="video/mp4" sar="640:639" width="426" height="240">
+        <BaseURL>video_240p_dash.mp4</BaseURL>
+        <SegmentBase indexRange="850-1085" timescale="12288">
+          <Initialization range="0-849"/>
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="1" contentType="audio" subsegmentAlignment="true">
+      <Representation id="4" bandwidth="82928" codecs="opus" mimeType="audio/mp4" audioSamplingRate="48000">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+        <BaseURL>audio.mp4</BaseURL>
+        <SegmentBase indexRange="810-1513" timescale="48000">
+          <Initialization range="0-809"/>
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

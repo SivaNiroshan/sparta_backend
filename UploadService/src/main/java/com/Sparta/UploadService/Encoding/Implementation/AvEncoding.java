@@ -6,12 +6,14 @@ import org.apache.commons.exec.DefaultExecutor;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class AvEncoding implements Encode {
 
     @Override
-    public void encode(String inputPath, String outputBasePath) throws Exception {
+    public List<Integer> encode(String inputPath, String outputBasePath) throws Exception {
         File inputFile = new File(inputPath);
         long fileSizeMB = inputFile.length() / (1024 * 1024);
 
@@ -28,9 +30,11 @@ public class AvEncoding implements Encode {
         String ffmpegPath = getFfmpegPath();
 
         int[] allHeights = {1080, 720, 480, 240};
+        List<Integer> encodedHeights = new ArrayList<>();
 
         for (int height : allHeights) {
             if (inputHeight >= height) {
+                encodedHeights.add(height);
                 String outputPath = outputBasePath.replace(".mp4", "_" + height + "p.mp4");
 
                 // Use scale while preserving aspect ratio
@@ -50,6 +54,7 @@ public class AvEncoding implements Encode {
                 System.out.println("Encoded " + height + "p successfully: " + outputPath);
             }
         }
+        return encodedHeights;
     }
 
 

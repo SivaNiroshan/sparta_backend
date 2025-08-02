@@ -2,9 +2,10 @@ package com.Sparta.UploadService.Encoding.Interfaces;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 public interface Encode {
-    void encode(String inputPath, String outputPath) throws Exception;
+    List<Integer> encode(String inputPath, String outputPath) throws Exception;
 
     default String getFfmpegPath() {
         String os = System.getProperty("os.name").toLowerCase();

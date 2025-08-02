@@ -1,5 +1,6 @@
 package com.Sparta.UploadService.Rabbit;
 
+import com.Sparta.UploadService.Dash.VideoSplit;
 import com.Sparta.UploadService.Encoding.Implementation.AvEncoding;
 import com.Sparta.UploadService.MongoDB.MetaService;
 import com.Sparta.UploadService.TusServer.Helpers.DeleteHandler;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
+import java.util.List;
 
 @Service
 public class EncodingJobConsumer {
@@ -20,6 +22,8 @@ public class EncodingJobConsumer {
 
     @Autowired
     private MetaService meta_service;
+    @Autowired
+    private VideoSplit video_split;
 
 
 
@@ -27,15 +31,17 @@ public class EncodingJobConsumer {
     public void receiveJob(EncodingJobDTO job) {
         System.out.println("Received job: " + job.getInputPath());
         try {
-            avEncoding.encode(job.getInputPath(), job.getOutputPath());
+            List<Integer> encodedQualities=avEncoding.encode(job.getInputPath(), job.getOutputPath());
             deleteHandler.deleteFile(Path.of(job.getInputPath())); // Use DeleteHandler for cleanup
             MetaRequest file=job.getFile();
-            System.out.println(" Encoding complete: " + job.getOutputPath());
+            System.out.println(" Encoding complete: " );
+            video_split.packageToDash(job.getInputPath(), encodedQualities);
             if(file != null) {
+                file.setQualities(encodedQualities);
                 meta_service.saveMeta(file); // Save metadata after encoding
-                System.out.println(" Metadata saved for: " + job.getOutputPath());
+                System.out.println(" Metadata saved for: " );
             } else {
-                System.out.println(" No metadata to save for: " + job.getOutputPath());
+                System.out.println(" No metadata to save for: " );
             }
 
         } catch (Exception e) {

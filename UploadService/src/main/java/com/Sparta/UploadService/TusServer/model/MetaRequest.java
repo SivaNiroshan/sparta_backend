@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Getter
 @Setter
@@ -17,6 +18,7 @@ public class MetaRequest implements Cloneable, Serializable {
     private String description;
     private String distributor_id;
     private String timeline;
+    private List<Integer> qualities;
 
     @Override
     public MetaRequest clone() {
