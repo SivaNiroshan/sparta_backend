@@ -34,12 +34,15 @@ public class EncodingJobConsumer {
             List<Integer> encodedQualities=avEncoding.encode(job.getInputPath(), job.getOutputPath());
             deleteHandler.deleteFile(Path.of(job.getInputPath())); // Use DeleteHandler for cleanup
             MetaRequest file=job.getFile();
-            System.out.println(" Encoding complete: " );
+            System.out.println(" ************************************************Encoding completed **************************************** " );
+            System.out.println("file path :"+job.getInputPath());
+            System.out.println("************************************************Dash packaging started *************************************************");
             video_split.packageToDash(job.getInputPath(), encodedQualities);
             if(file != null) {
                 file.setQualities(encodedQualities);
                 meta_service.saveMeta(file); // Save metadata after encoding
                 System.out.println(" Metadata saved for: " );
+                System.out.println("************************************************Metadata saved *************************************************");
             } else {
                 System.out.println(" No metadata to save for: " );
             }
@@ -47,6 +50,7 @@ public class EncodingJobConsumer {
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println(" Encoding failed for: " + job.getInputPath());
+            System.out.println("************************************************Encoding failed *************************************************");
         }
     }
 }

@@ -24,15 +24,9 @@
           <Initialization range="0-849"/>
         </SegmentBase>
       </Representation>
-      <Representation id="3" bandwidth="413585" codecs="av01.0.00M.08.0.110.01.01.01.0" mimeType="video/mp4" sar="640:639" width="426" height="240">
-        <BaseURL>SooraraiPottru_Aagasam_1080pvideo_240p_dash.mp4</BaseURL>
-        <SegmentBase indexRange="850-1085" timescale="12288">
-          <Initialization range="0-849"/>
-        </SegmentBase>
-      </Representation>
     </AdaptationSet>
     <AdaptationSet id="1" contentType="audio" subsegmentAlignment="true">
-      <Representation id="4" bandwidth="82928" codecs="opus" mimeType="audio/mp4" audioSamplingRate="48000">
+      <Representation id="3" bandwidth="82928" codecs="opus" mimeType="audio/mp4" audioSamplingRate="48000">
         <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
         <BaseURL>SooraraiPottru_Aagasam_1080paudio.mp4</BaseURL>
         <SegmentBase indexRange="810-1513" timescale="48000">

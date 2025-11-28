@@ -29,7 +29,7 @@ public class AvEncoding implements Encode {
         int audioBitrate = 64;
         String ffmpegPath = getFfmpegPath();
 
-        int[] allHeights = {1080, 720, 480, 240};
+        int[] allHeights = {1080, 720, 480};
         List<Integer> encodedHeights = new ArrayList<>();
 
         for (int height : allHeights) {
@@ -38,8 +38,10 @@ public class AvEncoding implements Encode {
                 String outputPath = outputBasePath.replace(".mp4", "_" + height + "p.mp4");
 
                 // Use scale while preserving aspect ratio
-                String command = String.format("\"%s\" -i \"%s\" -vf scale=-2:%d -c:v libsvtav1 -crf %d -preset %d -c:a libopus -b:a %dk -ac 2 \"%s\"",
-                        ffmpegPath, inputPath, height, crf, preset, audioBitrate, outputPath);
+                String command = String.format("\"%s\" -i \"%s\" -vf scale=-2:%d -c:v libsvtav1 -crf %d -preset %d -c:a libopus -b:a %dk -ac 2 -fflags +genpts -vsync 1 \"%s\"",
+                ffmpegPath, inputPath, height, crf, preset, audioBitrate, outputPath);
+        
+
 
                 System.out.println("Running FFmpeg command:\n" + command);
                 CommandLine cmdLine = CommandLine.parse(command);

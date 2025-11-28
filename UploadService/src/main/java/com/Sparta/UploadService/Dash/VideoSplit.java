@@ -19,7 +19,7 @@ public class VideoSplit {
         String packagerPath = this.GetPathDASH();
         System.out.println(outputBasePath);
 
-        // Get only the file name from the given base path (e.g., SooraraiPottru_Aagasam_1080p.mp4)
+        // Get only the file name from the given base path (e.g., SooraraiPottru_Aagasam_1080p.webm)
         String fileName = new File(outputBasePath).getName();
         // Remove extension
         String fileNameNoExt = fileName.substring(0, fileName.lastIndexOf('.'));
@@ -27,7 +27,7 @@ public class VideoSplit {
         String prefixPath = "C:\\Users\\THABENDRA\\Desktop\\sparta_backend\\";
 
         // Now recreate full path for audio and video inputs
-        String audioInput = prefixPath + fileName.replace(".mp4", "_encoded_" + encodedQualities.get(0) + "p.mp4");
+        String audioInput = prefixPath+"UploadService\\" + fileName.replace(".mp4", "_encoded_" + encodedQualities.get(0) + "p.mp4");
         System.out.println("Audio Input"+audioInput);
         String outputDir = prefixPath+"storage\\"+ "dash_output"+fileNameNoExt;
         System.out.println("Output Directory :"+outputDir);
@@ -37,14 +37,17 @@ public class VideoSplit {
 
         // Add video inputs
         for (int quality : encodedQualities) {
-            String videoInput = prefixPath + fileName.replace(".mp4", "_encoded_" + quality + "p.mp4");
+            System.out.println("************************************************DASH packaging started for quality "+quality+" *************************************************");
+            
+            String videoInput = prefixPath+"UploadService\\" + fileName.replace(".mp4", "_encoded_" + quality + "p.mp4");
             System.out.println("Video input  PAth"+videoInput);
             String videoOut = outputDir + File.separator + fileNameNoExt+"video_" + quality + "p_dash.mp4";
             System.out.println("Video Output path"+videoOut);
             command.append(" input=\"").append(videoInput).append("\",stream=video,output=\"").append(videoOut).append("\"");
             System.out.println("Command0 for visual frame"+command);
+            System.out.println("************************************************DASH packaging completed for quality "+quality+" *************************************************");
         }
-
+        System.out.println("************************************************DASH packaging started for audio *************************************************");
         // Add audio input (assumed to be from the highest quality)
         String audioOut = outputDir + File.separator+ fileNameNoExt + "audio.mp4";
         System.out.println("Audio Output"+audioOut);
@@ -59,6 +62,7 @@ public class VideoSplit {
         ProcessBuilder pb = new ProcessBuilder("cmd.exe", "/c",tempScript.toString());
         pb.redirectErrorStream(true);
         Process process = pb.start();
+        System.out.println("************************************************DASH packaging completed for audio *************************************************");
 
         // Output logs
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -74,20 +78,30 @@ public class VideoSplit {
                 throw new RuntimeException("Packager exited with code: " + exitCode);
             }
         } catch (InterruptedException e) {
+            System.out.println("************************************************DASH packaging interrupted *************************************************");
             Thread.currentThread().interrupt();
             throw new RuntimeException("Packaging interrupted", e);
         }
-
+        System.out.println("************************************************DASH packaging completed *************************************************");
         System.out.println("DASH packaging completed: " + tempScript.toString());
+        System.out.println("************************************************DASH packaging completed *************************************************");
     }
 
     private String GetPathDASH(){
         String os = System.getProperty("os.name").toLowerCase();
         String executableName = os.contains("win") ? "packager.exe" : "packager";
 
-        Path packagerPath = Paths.get("UploadService", "bin", "Dash-executable", os.contains("win") ? "windows" : "linux", executableName)
+        // Try path relative to current working directory (assuming we're in UploadService)
+        Path packagerPath = Paths.get("bin", "Dash-executable", os.contains("win") ? "windows" : "linux", executableName)
                 .normalize()
                 .toAbsolutePath();
+        
+        // If not found, try with UploadService prefix (in case we're in parent directory)
+        if (!packagerPath.toFile().exists()) {
+            packagerPath = Paths.get("UploadService", "bin", "Dash-executable", os.contains("win") ? "windows" : "linux", executableName)
+                    .normalize()
+                    .toAbsolutePath();
+        }
 
         if (!packagerPath.toFile().exists()) {
             throw new IllegalStateException("DASH Packager binary not found at: " + packagerPath);
