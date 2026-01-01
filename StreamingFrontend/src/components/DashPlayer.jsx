@@ -8,6 +8,9 @@ const DEFAULT_VIDEO_ID = 'SooraraiPottru_Aagasam_1080p'
 const DashPlayer = () => {
   const videoRef = useRef(null)
   const playerRef = useRef(null)
+  const simulatedBandwidthRef = useRef(null)
+  const useSimulatedSpeedRef = useRef(false)
+  const selectedQualityRef = useRef('auto')
   const [videoId, setVideoId] = useState(DEFAULT_VIDEO_ID)
   const [selectedQuality, setSelectedQuality] = useState('auto')
   const [availableQualities, setAvailableQualities] = useState(['auto', '1080', '720', '480'])
@@ -113,6 +116,17 @@ const DashPlayer = () => {
               const oldQuality = currentPlayingQuality
               
               setCurrentPlayingQuality(newQuality)
+              
+              // If using simulated bandwidth and quality changed unexpectedly, re-apply the correct quality
+              if (useSimulatedSpeedRef.current && simulatedBandwidthRef.current && selectedQualityRef.current === 'auto') {
+                const recommendedQuality = getRecommendedQualityFromBandwidth(simulatedBandwidthRef.current)
+                if (currentQuality.height !== recommendedQuality) {
+                  console.warn(`Quality changed to ${newQuality} but should be ${recommendedQuality}p based on simulated bandwidth. Re-applying...`)
+                  setTimeout(() => {
+                    setQualityBasedOnBandwidth(simulatedBandwidthRef.current, true)
+                  }, 100)
+                }
+              }
               
               // Show notification when quality changes
               if (oldQuality && oldQuality !== newQuality) {
@@ -234,7 +248,7 @@ const DashPlayer = () => {
   }
 
   // Function to manually set quality based on bandwidth
-  const setQualityBasedOnBandwidth = (bandwidthMbps) => {
+  const setQualityBasedOnBandwidth = (bandwidthMbps, keepLocked = false) => {
     if (!playerRef.current || selectedQuality !== 'auto') return
 
     const trySetQuality = () => {
@@ -246,12 +260,13 @@ const DashPlayer = () => {
           const targetQuality = videoQualities.find(q => q.height === recommendedQuality)
           
           if (targetQuality) {
-            // Disable auto switching temporarily
+            // When using simulated bandwidth, permanently disable auto switching
+            // When using actual bandwidth, allow auto switching
             playerRef.current.updateSettings({
               streaming: {
                 abr: {
                   autoSwitchBitrate: {
-                    video: false
+                    video: !keepLocked  // Disable ABR if keepLocked is true (simulated bandwidth)
                   }
                 }
               }
@@ -260,22 +275,7 @@ const DashPlayer = () => {
             // Set the quality
             playerRef.current.setQualityFor('video', targetQuality.qualityIndex)
             
-            // Re-enable auto switching after a delay
-            setTimeout(() => {
-              if (playerRef.current && selectedQuality === 'auto') {
-                playerRef.current.updateSettings({
-                  streaming: {
-                    abr: {
-                      autoSwitchBitrate: {
-                        video: true
-                      }
-                    }
-                  }
-                })
-              }
-            }, 2000)
-            
-            console.log(`Manually set quality to ${recommendedQuality}p based on bandwidth: ${bandwidthMbps} Mbps`)
+            console.log(`Manually set quality to ${recommendedQuality}p based on bandwidth: ${bandwidthMbps} Mbps (ABR ${keepLocked ? 'disabled' : 'enabled'})`)
             return true
           }
         }
@@ -294,6 +294,13 @@ const DashPlayer = () => {
     }
   }
 
+  // Update refs when values change
+  useEffect(() => {
+    simulatedBandwidthRef.current = simulatedBandwidth
+    useSimulatedSpeedRef.current = useSimulatedSpeed
+    selectedQualityRef.current = selectedQuality
+  }, [simulatedBandwidth, useSimulatedSpeed, selectedQuality])
+
   // Handle bandwidth reporting when simulated speed changes (without re-initializing player)
   useEffect(() => {
     if (!sessionId || !playerRef.current) return
@@ -303,26 +310,40 @@ const DashPlayer = () => {
       reportBandwidthToServer(sessionId, simulatedBandwidth)
       
       // If quality is set to auto, manually adjust quality based on simulated bandwidth
+      // Keep ABR disabled to prevent dash.js from overriding based on actual network speed
       if (selectedQuality === 'auto') {
         // Small delay to ensure player is ready
         setTimeout(() => {
-          setQualityBasedOnBandwidth(simulatedBandwidth)
+          setQualityBasedOnBandwidth(simulatedBandwidth, true) // true = keep ABR disabled
         }, 500)
+        
+        // Periodically re-apply quality to prevent dash.js from switching
+        const qualityLockInterval = setInterval(() => {
+          if (playerRef.current && useSimulatedSpeed && selectedQuality === 'auto') {
+            setQualityBasedOnBandwidth(simulatedBandwidth, true)
+          } else {
+            clearInterval(qualityLockInterval)
+          }
+        }, 3000) // Check every 3 seconds
+        
+        // Cleanup interval on unmount or when conditions change
+        return () => clearInterval(qualityLockInterval)
       }
       
       // Show notification that network speed changed
       const preset = networkSpeedPresets[networkSpeed]
       if (preset) {
         const recommendedQuality = getRecommendedQualityFromBandwidth(simulatedBandwidth)
-        setQualityChangeNotification(`Network: ${preset.label} → Quality: ${recommendedQuality}p`)
+        setQualityChangeNotification(`Network: ${preset.label} → Quality: ${recommendedQuality}p (Locked)`)
         setTimeout(() => setQualityChangeNotification(null), 3000)
       }
     } else if (!useSimulatedSpeed) {
       // Re-measure actual bandwidth when switching back to auto
+      // Re-enable ABR for actual bandwidth measurements
       measureBandwidth(sessionId).then(() => {
         if (bandwidth && selectedQuality === 'auto') {
           setTimeout(() => {
-            setQualityBasedOnBandwidth(parseFloat(bandwidth))
+            setQualityBasedOnBandwidth(parseFloat(bandwidth), false) // false = enable ABR
           }, 500)
         }
       })
