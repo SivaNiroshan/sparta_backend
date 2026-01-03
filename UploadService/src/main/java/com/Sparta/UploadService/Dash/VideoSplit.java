@@ -15,7 +15,13 @@ import java.nio.file.StandardOpenOption;
 
 @Component
 public class VideoSplit {
-    public void packageToDash(String outputBasePath, List<Integer> encodedQualities) throws IOException {
+    /**
+     * Package video to DASH format
+     * @param outputBasePath Base path for output files
+     * @param encodedQualities List of encoded quality heights
+     * @return Path to the DASH output directory
+     */
+    public String packageToDash(String outputBasePath, List<Integer> encodedQualities) throws IOException {
         String packagerPath = this.GetPathDASH();
         System.out.println(outputBasePath);
 
@@ -85,6 +91,8 @@ public class VideoSplit {
         System.out.println("************************************************DASH packaging completed *************************************************");
         System.out.println("DASH packaging completed: " + tempScript.toString());
         System.out.println("************************************************DASH packaging completed *************************************************");
+        
+        return outputDir; // Return the output directory path
     }
 
     private String GetPathDASH(){

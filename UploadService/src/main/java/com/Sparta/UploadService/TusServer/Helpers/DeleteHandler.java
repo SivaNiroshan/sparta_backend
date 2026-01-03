@@ -82,6 +82,44 @@ public class DeleteHandler {
         }
     }
 
+    /**
+     * Delete a directory and all its contents recursively
+     */
+    public void deleteDirectory(Path directoryPath) {
+        try {
+            if (directoryPath != null && Files.exists(directoryPath)) {
+                if (Files.isDirectory(directoryPath)) {
+                    // Delete all files and subdirectories recursively
+                    Files.walk(directoryPath)
+                            .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
+                            .forEach(path -> {
+                                try {
+                                    Files.delete(path);
+                                    logger.debug("[DeleteHandler] Deleted: {}", path);
+                                } catch (IOException e) {
+                                    logger.error("[DeleteHandler] Failed to delete: {}", path, e);
+                                }
+                            });
+                    logger.info("[DeleteHandler] Directory deleted: {}", directoryPath);
+                } else {
+                    // If it's a file, just delete it
+                    deleteFile(directoryPath);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("[DeleteHandler] Directory deletion failed: {}", directoryPath, e);
+        }
+    }
+
+    /**
+     * Delete a directory by string path
+     */
+    public void deleteDirectory(String directoryPath) {
+        if (directoryPath != null && !directoryPath.isEmpty()) {
+            deleteDirectory(Path.of(directoryPath));
+        }
+    }
+
     public static class UploadContext {
         public Thread readerThread;
         public Thread writerThread;
