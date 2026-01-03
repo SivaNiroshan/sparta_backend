@@ -2,8 +2,15 @@ import React, { useEffect, useRef, useState } from 'react'
 import dashjs from 'dashjs'
 import './DashPlayer.css'
 
-const STREAMING_SERVICE_URL = 'http://localhost:8083'
-const DEFAULT_VIDEO_ID = 'SooraraiPottru_Aagasam_1080p'
+// Use proxy in development, or direct URL in production
+const STREAMING_SERVICE_URL = import.meta.env.DEV 
+  ? '' // Use proxy in development (vite.config.js)
+  : 'http://localhost:8083' // Direct URL in production
+
+// Default video ID - should match the video ID from UploadService
+// Video IDs are generated from MongoDB ID or file name (slugified)
+// Note: Actual video ID in S3 is 'sooraraipottru-aagasam-1080p' (no hyphen between soorarai and pottru)
+const DEFAULT_VIDEO_ID = 'sooraraipottru-aagasam-1080p'
 
 const DashPlayer = () => {
   const videoRef = useRef(null)
@@ -24,6 +31,8 @@ const DashPlayer = () => {
   const [useSimulatedSpeed, setUseSimulatedSpeed] = useState(false)
   const [currentPlayingQuality, setCurrentPlayingQuality] = useState(null)
   const [qualityChangeNotification, setQualityChangeNotification] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   // Network speed presets (in Mbps)
   const networkSpeedPresets = {
@@ -46,11 +55,36 @@ const DashPlayer = () => {
   useEffect(() => {
     if (!videoRef.current || !sessionId) return
 
-    const manifestUrl = `${STREAMING_SERVICE_URL}/stream/${videoId}/manifest.mpd?sessionId=${sessionId}`
+    // Build manifest URL - use proxy in dev, direct URL in prod
+    const baseUrl = STREAMING_SERVICE_URL || ''
+    const manifestPath = import.meta.env.DEV 
+      ? `/api/stream/${videoId}/manifest.mpd?sessionId=${sessionId}`
+      : `${baseUrl}/stream/${videoId}/manifest.mpd?sessionId=${sessionId}`
+    
+    console.log('Loading manifest from:', manifestPath)
+    setIsLoading(true)
+    setError(null)
     
     // Initialize dash.js player
     const player = dashjs.MediaPlayer().create()
-    player.initialize(videoRef.current, manifestUrl, true)
+    
+    // Add error handling
+    player.on('error', (error) => {
+      console.error('DASH Player Error:', error)
+      setIsLoading(false)
+      
+      let errorMessage = 'Failed to load video'
+      if (error.error) {
+        if (error.error.code === 'manifestError' || error.error.code === 'manifestLoadError') {
+          errorMessage = `Failed to load video manifest for: ${videoId}\n\nPlease check:\n1. Video ID is correct\n2. Video exists in S3\n3. StreamingService is running on port 8083\n4. CORS is properly configured`
+        } else if (error.error.code === 'segmentError') {
+          errorMessage = 'Failed to load video segment. Check network connection.'
+        }
+      }
+      setError(errorMessage)
+    })
+    
+    player.initialize(videoRef.current, manifestPath, true)
     playerRef.current = player
 
     // Set initial quality
@@ -89,6 +123,8 @@ const DashPlayer = () => {
     // Event listeners
     player.on('streamInitialized', () => {
       console.log('Stream initialized')
+      setIsLoading(false)
+      setError(null)
       const duration = player.duration()
       setDuration(duration)
     })
@@ -158,6 +194,8 @@ const DashPlayer = () => {
     // Cleanup
     return () => {
       clearTimeout(bandwidthTimer)
+      setIsLoading(false)
+      setError(null)
       if (playerRef.current) {
         playerRef.current.destroy()
         playerRef.current = null
@@ -171,9 +209,15 @@ const DashPlayer = () => {
 
     try {
       const qualityValue = quality === 'auto' ? null : parseInt(quality)
-      const url = `${STREAMING_SERVICE_URL}/bandwidth/quality/select?sessionId=${sessionId}${qualityValue ? `&quality=${qualityValue}` : ''}`
+      const baseUrl = STREAMING_SERVICE_URL || ''
+      const url = import.meta.env.DEV
+        ? `/api/bandwidth/quality/select?sessionId=${sessionId}${qualityValue ? `&quality=${qualityValue}` : ''}`
+        : `${baseUrl}/bandwidth/quality/select?sessionId=${sessionId}${qualityValue ? `&quality=${qualityValue}` : ''}`
       
       const response = await fetch(url, { method: 'POST' })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       
       console.log('Quality selection reported to backend:', data)
@@ -359,7 +403,15 @@ const DashPlayer = () => {
   const measureBandwidth = async (sessionId) => {
     try {
       const startTime = performance.now()
-      const response = await fetch(`${STREAMING_SERVICE_URL}/bandwidth/test`)
+      const baseUrl = STREAMING_SERVICE_URL || ''
+      const testUrl = import.meta.env.DEV
+        ? '/api/bandwidth/test'
+        : `${baseUrl}/bandwidth/test`
+      
+      const response = await fetch(testUrl)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const blob = await response.blob()
       const endTime = performance.now()
 
@@ -392,10 +444,15 @@ const DashPlayer = () => {
 
   const reportBandwidthToServer = async (sessionId, bandwidthMbps) => {
     try {
-      await fetch(
-        `${STREAMING_SERVICE_URL}/bandwidth/report?sessionId=${sessionId}&bandwidthMbps=${bandwidthMbps.toFixed(2)}`,
-        { method: 'POST' }
-      )
+      const baseUrl = STREAMING_SERVICE_URL || ''
+      const reportUrl = import.meta.env.DEV
+        ? `/api/bandwidth/report?sessionId=${sessionId}&bandwidthMbps=${bandwidthMbps.toFixed(2)}`
+        : `${baseUrl}/bandwidth/report?sessionId=${sessionId}&bandwidthMbps=${bandwidthMbps.toFixed(2)}`
+      
+      const response = await fetch(reportUrl, { method: 'POST' })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       console.log('Reported bandwidth to server:', bandwidthMbps.toFixed(2), 'Mbps')
     } catch (error) {
       console.error('Failed to report bandwidth:', error)
@@ -543,13 +600,30 @@ const DashPlayer = () => {
       </div>
 
       <div className="video-wrapper">
-        {currentPlayingQuality && (
+        {isLoading && (
+          <div className="loading-overlay">
+            <div className="loading-spinner"></div>
+            <p>Loading video...</p>
+          </div>
+        )}
+        {error && (
+          <div className="error-overlay">
+            <div className="error-message">
+              <h3>⚠️ Error Loading Video</h3>
+              <p>{error}</p>
+              <button onClick={() => { setError(null); setIsLoading(false); }} className="error-dismiss-btn">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+        {currentPlayingQuality && !error && (
           <div className="current-quality-badge">
             <span className="quality-label">Currently Playing:</span>
             <span className="quality-value">{currentPlayingQuality}</span>
           </div>
         )}
-        {qualityChangeNotification && (
+        {qualityChangeNotification && !error && (
           <div className="quality-change-notification">
             {qualityChangeNotification}
           </div>
@@ -558,7 +632,7 @@ const DashPlayer = () => {
           ref={videoRef}
           controls
           className="dash-video"
-          style={{ width: '100%', height: 'auto' }}
+          style={{ width: '100%', height: 'auto', display: error ? 'none' : 'block' }}
         />
       </div>
 
@@ -583,7 +657,12 @@ const DashPlayer = () => {
 
       <div className="player-info">
         <p>Session ID: {sessionId}</p>
-        <p>Manifest URL: {STREAMING_SERVICE_URL}/stream/{videoId}/manifest.mpd</p>
+        <p>Manifest URL: {import.meta.env.DEV 
+          ? `/api/stream/${videoId}/manifest.mpd` 
+          : `${STREAMING_SERVICE_URL}/stream/${videoId}/manifest.mpd`}</p>
+        <p style={{ fontSize: '11px', color: '#999', marginTop: '10px' }}>
+          Note: Video ID should match the ID from UploadService (MongoDB ID or slugified filename)
+        </p>
       </div>
     </div>
   )

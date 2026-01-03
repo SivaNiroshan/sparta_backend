@@ -280,6 +280,88 @@
   word-break: break-all;
 }
 
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  color: white;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 20px;
+}
+
+.error-message {
+  background: #1f1f1f;
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 500px;
+  text-align: center;
+  border: 2px solid #ef4444;
+}
+
+.error-message h3 {
+  margin: 0 0 15px 0;
+  color: #ef4444;
+  font-size: 20px;
+}
+
+.error-message p {
+  margin: 0 0 20px 0;
+  white-space: pre-line;
+  line-height: 1.6;
+  color: #e5e5e5;
+}
+
+.error-dismiss-btn {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.error-dismiss-btn:hover {
+  background: #5568d3;
+}
+
 @media (max-width: 768px) {
   .player-controls-top {
     flex-direction: column;
@@ -301,6 +383,11 @@
 
   .time-controls {
     min-width: 100%;
+  }
+
+  .error-message {
+    padding: 20px;
+    font-size: 14px;
   }
 }
 
