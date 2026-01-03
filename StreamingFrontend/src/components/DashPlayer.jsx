@@ -18,6 +18,7 @@ const DashPlayer = () => {
   const simulatedBandwidthRef = useRef(null)
   const useSimulatedSpeedRef = useRef(false)
   const selectedQualityRef = useRef('auto')
+  const qualityLockIntervalRef = useRef(null)
   const [videoId, setVideoId] = useState(DEFAULT_VIDEO_ID)
   const [selectedQuality, setSelectedQuality] = useState('auto')
   const [availableQualities, setAvailableQualities] = useState(['auto', '1080', '720', '480'])
@@ -153,6 +154,39 @@ const DashPlayer = () => {
               
               setCurrentPlayingQuality(newQuality)
               
+              // If manual quality is selected, enforce it and prevent automatic changes
+              if (selectedQualityRef.current !== 'auto') {
+                const requestedQuality = parseInt(selectedQualityRef.current)
+                if (currentQuality.height !== requestedQuality) {
+                  console.warn(`⚠️ Quality changed to ${newQuality} but manual quality ${requestedQuality}p was selected. Re-applying immediately...`)
+                  // Re-apply the manually selected quality immediately (no delay)
+                  const targetQuality = videoQualities.find(q => q.height === requestedQuality)
+                  if (targetQuality && playerRef.current) {
+                    playerRef.current.setQualityFor('video', targetQuality.qualityIndex)
+                    // Ensure ABR is still disabled
+                    playerRef.current.updateSettings({
+                      streaming: {
+                        abr: {
+                          autoSwitchBitrate: {
+                            video: false
+                          }
+                        }
+                      }
+                    })
+                    // Update displayed quality to the correct one
+                    setCurrentPlayingQuality(requestedQuality + 'p')
+                  }
+                  return // Don't show notification for unwanted changes
+                } else {
+                  // This is the correct quality, allow it
+                  setCurrentPlayingQuality(newQuality)
+                  console.log(`✅ Quality locked at ${newQuality} (manual selection)`)
+                }
+              } else {
+                // Auto mode - allow quality changes
+                setCurrentPlayingQuality(newQuality)
+              }
+              
               // If using simulated bandwidth and quality changed unexpectedly, re-apply the correct quality
               if (useSimulatedSpeedRef.current && simulatedBandwidthRef.current && selectedQualityRef.current === 'auto') {
                 const recommendedQuality = getRecommendedQualityFromBandwidth(simulatedBandwidthRef.current)
@@ -164,7 +198,7 @@ const DashPlayer = () => {
                 }
               }
               
-              // Show notification when quality changes
+              // Show notification when quality changes (only if it's a valid change)
               if (oldQuality && oldQuality !== newQuality) {
                 setQualityChangeNotification(`Quality changed: ${oldQuality} → ${newQuality}`)
                 setTimeout(() => setQualityChangeNotification(null), 3000)
@@ -236,6 +270,7 @@ const DashPlayer = () => {
           // Report auto mode to backend
           reportQualitySelection('auto')
           
+          // Enable ABR for adaptive quality
           playerRef.current.updateSettings({
             streaming: {
               abr: {
@@ -245,12 +280,14 @@ const DashPlayer = () => {
               }
             }
           })
+          console.log('Quality set to AUTO - ABR enabled')
         } else {
           const qualityIndex = parseInt(selectedQuality)
           
           // Report manual quality selection to backend
           reportQualitySelection(selectedQuality)
           
+          // Disable ABR completely to lock quality
           playerRef.current.updateSettings({
             streaming: {
               abr: {
@@ -260,6 +297,42 @@ const DashPlayer = () => {
               }
             }
           })
+          
+          // Function to enforce the locked quality
+          const enforceLockedQuality = () => {
+            if (!playerRef.current || selectedQuality === 'auto') return
+            
+            try {
+              const videoQualities = playerRef.current.getBitrateInfoListFor('video')
+              if (videoQualities && videoQualities.length > 0) {
+                const currentQualityIndex = playerRef.current.getQualityFor('video')
+                const currentQualityInfo = videoQualities.find(q => q.qualityIndex === currentQualityIndex)
+                const requestedQuality = parseInt(selectedQuality)
+                
+                if (currentQualityInfo && currentQualityInfo.height !== requestedQuality) {
+                  // Quality was changed by dash.js, re-apply the locked quality
+                  const target = videoQualities.find(q => q.height === requestedQuality)
+                  if (target) {
+                    console.log(`🔒 Re-applying locked quality ${requestedQuality}p (was ${currentQualityInfo.height}p)`)
+                    playerRef.current.setQualityFor('video', target.qualityIndex)
+                    // Ensure ABR stays disabled
+                    playerRef.current.updateSettings({
+                      streaming: {
+                        abr: {
+                          autoSwitchBitrate: {
+                            video: false
+                          }
+                        }
+                      }
+                    })
+                  }
+                }
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          }
+          
           // Try to set quality, but only if stream is initialized
           try {
             const videoQualities = playerRef.current.getBitrateInfoListFor('video')
@@ -267,11 +340,36 @@ const DashPlayer = () => {
               const targetQuality = videoQualities.find(q => q.height === qualityIndex)
               if (targetQuality) {
                 playerRef.current.setQualityFor('video', targetQuality.qualityIndex)
+                console.log(`🔒 Quality LOCKED to ${qualityIndex}p - ABR disabled`)
+                
+                // Set up periodic check to enforce quality (prevent dash.js from changing it)
+                qualityLockIntervalRef.current = setInterval(enforceLockedQuality, 1500) // Check every 1.5 seconds
+              } else {
+                console.warn(`⚠️ Quality ${qualityIndex}p not found in available qualities`)
               }
             }
           } catch (e) {
-            // Stream not ready yet, will be set when stream initializes
-            console.log('Stream not ready for quality change, will apply when ready')
+            // Stream not ready yet, set up interval to try when ready
+            console.log('⏳ Stream not ready for quality change, will apply when ready')
+            const initInterval = setInterval(() => {
+              try {
+                const videoQualities = playerRef.current.getBitrateInfoListFor('video')
+                if (videoQualities && videoQualities.length > 0) {
+                  const targetQuality = videoQualities.find(q => q.height === qualityIndex)
+                  if (targetQuality) {
+                    playerRef.current.setQualityFor('video', targetQuality.qualityIndex)
+                    console.log(`🔒 Quality LOCKED to ${qualityIndex}p (applied after stream ready)`)
+                    clearInterval(initInterval)
+                    // Start enforcement interval
+                    qualityLockIntervalRef.current = setInterval(enforceLockedQuality, 1500)
+                  }
+                }
+              } catch (err) {
+                // Still not ready, keep trying
+              }
+            }, 500)
+            
+            return () => clearInterval(initInterval)
           }
         }
       } catch (error) {
