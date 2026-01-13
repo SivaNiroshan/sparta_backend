@@ -1,7 +1,9 @@
 package com.sparta.UserService.controler;
 
+import com.sparta.UserService.exception.ForgotException;
 import com.sparta.UserService.exception.LoginException;
 import com.sparta.UserService.exception.SignupException;
+import com.sparta.UserService.model.ForgotPasswordRequest;
 import com.sparta.UserService.model.LoginRequest;
 import com.sparta.UserService.model.SignupRequest;
 import com.sparta.UserService.model.VerifyOTPRequest;
@@ -82,7 +84,53 @@ public class AuthController {
         return authService.updatePasswordByUID(UUID.fromString(userId),newPassword);
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            Map<String, Object> response = authService.initiateForgotPassword(request.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (ForgotException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+    }
 
+    @PostMapping("/verify-forgot-password-otp")
+    public ResponseEntity<?> verifyForgotPasswordOTP(@RequestBody VerifyOTPRequest request) {
+        try {
+            Map<String, Object> response = authService.verifyForgotPasswordOTP(request.getEmail(), request.getOtp());
+            return ResponseEntity.ok(response);
+        } catch (ForgotException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/resend-signup-otp")
+    public ResponseEntity<?> resendSignupOTP(@RequestBody ForgotPasswordRequest request) {
+        try {
+            Map<String, Object> response = authService.resendSignupOTP(request.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (SignupException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/resend-forgot-password-otp")
+    public ResponseEntity<?> resendForgotPasswordOTP(@RequestBody ForgotPasswordRequest request) {
+        try {
+            Map<String, Object> response = authService.resendForgotPasswordOTP(request.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (ForgotException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
 
 }
 

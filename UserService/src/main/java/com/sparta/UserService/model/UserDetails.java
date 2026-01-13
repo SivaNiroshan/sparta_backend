@@ -14,6 +14,7 @@ import java.util.UUID;
 public class UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "UUID", updatable = false, nullable = false)
     private UUID id;
     @Column(unique = true, nullable = false)
     private String email;
