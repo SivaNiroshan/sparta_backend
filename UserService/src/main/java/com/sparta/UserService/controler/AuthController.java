@@ -1,13 +1,17 @@
 package com.sparta.UserService.controler;
 
+import com.sparta.UserService.exception.LoginException;
+import com.sparta.UserService.exception.SignupException;
 import com.sparta.UserService.model.LoginRequest;
 import com.sparta.UserService.model.SignupRequest;
+import com.sparta.UserService.model.VerifyOTPRequest;
 import com.sparta.UserService.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,14 +24,45 @@ public class AuthController {
 
 
     @PostMapping("/login")
-    public Object login(@RequestBody LoginRequest request) {
-        return authService.login(request.getEmail(), request.getPassword());
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            Map<String, Object> response = authService.login(request.getEmail(), request.getPassword());
+            return ResponseEntity.ok(response);
+        } catch (LoginException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
     }
 
     @PostMapping("/signup")
-    public Object signup(@RequestBody SignupRequest request){
-        return authService.signup(request.getEmail(),request.getPassword(),request.getFirstname(),request.getLastname(),request.getUsername());
+    public ResponseEntity<?> signup(@RequestBody SignupRequest request){
+        try {
+            Map<String, Object> response = authService.initiateSignup(
+                request.getEmail(),
+                request.getPassword(),
+                request.getFirstname(),
+                request.getLastname(),
+                request.getUsername()
+            );
+            return ResponseEntity.ok(response);
+        } catch (SignupException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        }
+    }
 
+    @PostMapping("/verify-signup-otp")
+    public ResponseEntity<?> verifySignupOTP(@RequestBody VerifyOTPRequest request){
+        try {
+            Map<String, Object> response = authService.verifySignupOTP(request.getEmail(), request.getOtp());
+            return ResponseEntity.ok(response);
+        } catch (SignupException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
     }
 
     @GetMapping("/email-exists")

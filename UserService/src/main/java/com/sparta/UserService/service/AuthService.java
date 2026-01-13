@@ -1,182 +1,202 @@
 package com.sparta.UserService.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparta.UserService.exception.LoginException;
+import com.sparta.UserService.exception.SignupException;
+import com.sparta.UserService.model.SignupData;
 import com.sparta.UserService.model.UserDetails;
 import com.sparta.UserService.repository.RegisterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
 
-    @Value("${supabase.auth.url}")
-    private String supabaseAuthUrl;
-
-    @Value("${supabase.api.key}")
-    private String supabaseApiKey;
-
-    @Value("${supabase.service.key}")
-    private String supabseServiceRole;
-
-
-
     @Autowired
     private RegisterRepository register;
 
+    @Autowired
+    private OTPService otpService;
 
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private static final String REDIS_SIGNUP_PREFIX = "signup:otp:";
+    private static final int OTP_EXPIRATION_MINUTES = 5;
 
     public Map<String, Object> login(String email, String password) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("apikey", supabaseApiKey);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("email", email);
-        body.put("password", password);
-
-        HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    supabaseAuthUrl+"token?grant_type=password",  // make sure the URL has grant_type=password
-                    entity,
-                    Map.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                Map<String, Object> responseBody = response.getBody();
-                if (responseBody != null) {
-                    return responseBody; // Return full JSON: { access_token, refresh_token, etc. }
-                }
-            }
-            throw new RuntimeException("Unexpected error during login");
-
-        } catch (HttpClientErrorException e) {
-            // Handle Supabase errors (400, 401, etc.)
-            if (e.getStatusCode() == HttpStatus.BAD_REQUEST || e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-                throw new RuntimeException("Invalid email or password");
-            }
-            // Re-throw other errors
-            throw new RuntimeException("Login failed: " + e.getMessage());
+        UserDetails user = register.findByEmail(email);
+        
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+            throw new LoginException("Invalid email or password");
         }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", Map.of(
+            "id", user.getId().toString(),
+            "email", user.getEmail(),
+            "firstname", user.getFirstname() != null ? user.getFirstname() : "",
+            "lastname", user.getLastname() != null ? user.getLastname() : "",
+            "username", user.getUsername() != null ? user.getUsername() : ""
+        ));
+        response.put("message", "Login successful");
+        
+        return response;
     }
-    public Map<String, Object> signup(String email, String password,String firstname, String lastname, String username) {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("apikey", supabaseApiKey);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("email", email);
-        body.put("password", password);
-
-        HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    supabaseAuthUrl+"signup",  // e.g., https://<project>.supabase.co/auth/v1/signup
-                    entity,
-                    Map.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.CREATED) {
-                Map<String, Object> responseBody = response.getBody();
-                if (!responseBody.isEmpty() && responseBody.containsKey("user")) {
-                    Map<String, Object> userMap = (Map<String, Object>) responseBody.get("user");
-                    String userIdString = (String) userMap.get("id");
-
-                    UserDetails details=new UserDetails();
-                    details.setId(UUID.fromString(userIdString));
-                    details.setFirstname(firstname);
-                    details.setLastname(lastname);
-                    details.setUsername(username);
-
-                    register.save(details);
-
-
-                    return responseBody;
-                }
-            }
-            throw new RuntimeException("Unexpected error during signup");
-
-        } catch (HttpClientErrorException e) {
-            System.err.println("Supabase error body: " + e.getResponseBodyAsString());
-            throw new RuntimeException("Signup failed: " + e.getResponseBodyAsString());
+    /**
+     * Initiates signup process by sending OTP to user's email
+     * Stores user data temporarily in Redis with 5-minute expiration
+     */
+    public Map<String, Object> initiateSignup(String email, String password, String firstname, String lastname, String username) {
+        // Check if email already exists in database
+        if (register.existsByEmail(email)) {
+            throw new SignupException("Email already exists");
         }
+
+        // Generate OTP
+        String otp = otpService.sendOTPByEmail(email);
+
+        // Hash password before storing in Redis
+        String hashedPassword = passwordEncoder.encode(password);
+
+        // Create SignupData object
+        SignupData signupData = new SignupData();
+        signupData.setEmail(email);
+        signupData.setPassword(hashedPassword);
+        signupData.setFirstname(firstname);
+        signupData.setLastname(lastname);
+        signupData.setUsername(username);
+        signupData.setOtp(otp);
+        signupData.setCreatedAt(System.currentTimeMillis());
+
+        // Store in Redis with 5-minute expiration
+        String redisKey = REDIS_SIGNUP_PREFIX + email;
+        redisTemplate.opsForValue().set(redisKey, signupData, OTP_EXPIRATION_MINUTES, TimeUnit.MINUTES);
+
+        // Return response (do not include OTP)
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "OTP sent to your email. Please verify within 5 minutes.");
+        response.put("email", email);
+        
+        return response;
     }
+
+    /**
+     * Verifies OTP and completes signup by saving user to database
+     */
+    public Map<String, Object> verifySignupOTP(String email, String providedOTP) {
+        String redisKey = REDIS_SIGNUP_PREFIX + email;
+        
+        // Retrieve signup data from Redis
+        Object data = redisTemplate.opsForValue().get(redisKey);
+        
+        if (data == null) {
+            throw new SignupException("OTP expired or invalid. Please request a new OTP.");
+        }
+
+        // Convert to SignupData object
+        SignupData signupData = objectMapper.convertValue(data, SignupData.class);
+
+        // Verify OTP
+        if (!otpService.verifyOTP(providedOTP, signupData.getOtp())) {
+            throw new SignupException("Invalid OTP. Please try again.");
+        }
+
+        // Check again if email exists (race condition protection)
+        if (register.existsByEmail(email)) {
+            // Delete Redis entry
+            redisTemplate.delete(redisKey);
+            throw new SignupException("Email already exists");
+        }
+
+        // Create and save user to database
+        UserDetails details = new UserDetails();
+        details.setEmail(signupData.getEmail());
+        details.setPassword(signupData.getPassword()); // Already hashed
+        details.setFirstname(signupData.getFirstname());
+        details.setLastname(signupData.getLastname());
+        details.setUsername(signupData.getUsername());
+
+        UserDetails savedUser = register.save(details);
+
+        // Delete Redis entry after successful signup
+        redisTemplate.delete(redisKey);
+
+        // Return success response
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", Map.of(
+            "id", savedUser.getId().toString(),
+            "email", savedUser.getEmail(),
+            "firstname", savedUser.getFirstname() != null ? savedUser.getFirstname() : "",
+            "lastname", savedUser.getLastname() != null ? savedUser.getLastname() : "",
+            "username", savedUser.getUsername() != null ? savedUser.getUsername() : ""
+        ));
+        response.put("message", "Signup successful");
+        
+        return response;
+    }
+
+    /**
+     * Legacy signup method - kept for backward compatibility if needed
+     * @deprecated Use initiateSignup and verifySignupOTP instead
+     */
+    @Deprecated
+    public Map<String, Object> signup(String email, String password, String firstname, String lastname, String username) {
+        // Check if email already exists
+        if (register.existsByEmail(email)) {
+            throw new SignupException("Email already exists");
+        }
+
+        // Create new user
+        UserDetails details = new UserDetails();
+        details.setEmail(email);
+        details.setPassword(passwordEncoder.encode(password));
+        details.setFirstname(firstname);
+        details.setLastname(lastname);
+        details.setUsername(username);
+
+        UserDetails savedUser = register.save(details);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", Map.of(
+            "id", savedUser.getId().toString(),
+            "email", savedUser.getEmail(),
+            "firstname", savedUser.getFirstname() != null ? savedUser.getFirstname() : "",
+            "lastname", savedUser.getLastname() != null ? savedUser.getLastname() : "",
+            "username", savedUser.getUsername() != null ? savedUser.getUsername() : ""
+        ));
+        response.put("message", "Signup successful");
+        
+        return response;
+    }
+
     public boolean emailExists(String email) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("apikey", supabseServiceRole);  // Can also use supabaseServiceKey
-        headers.set("Authorization", "Bearer " + supabseServiceRole); // Use service role key here
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        String url = supabaseAuthUrl + "/admin/users?email=" + email;
-
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    entity,
-                    Map.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                List<?> users = (List<?>) response.getBody().get("users");
-                return users != null && !users.isEmpty();
-            }
-            return false;
-
-        } catch (HttpClientErrorException e) {
-            System.err.println("Error checking email existence: " + e.getResponseBodyAsString());
-            throw new RuntimeException("Email check failed: " + e.getResponseBodyAsString());
-        }
+        return register.existsByEmail(email);
     }
 
     public ResponseEntity<String> updatePasswordByUID(UUID userId, String newPassword) {
-
-
-        String url = supabaseAuthUrl + "admin/users/" + userId;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + supabseServiceRole);
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("password", newPassword);
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
-        try {
-            ResponseEntity<String> response = new RestTemplate().exchange(
-                    url,
-                    HttpMethod.PATCH,
-                    entity,
-                    String.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                return ResponseEntity.ok("Password updated successfully");
-            } else {
-                return ResponseEntity.status(response.getStatusCode()).body("Failed to update password");
-            }
-
-        } catch (HttpClientErrorException e) {
-            System.err.println("Error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
-            return ResponseEntity.status(e.getStatusCode()).body("Failed to update password: " + e.getResponseBodyAsString());
+        Optional<UserDetails> userOptional = register.findById(userId);
+        
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
+
+        UserDetails user = userOptional.get();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        register.save(user);
+
+        return ResponseEntity.ok("Password updated successfully");
     }
-
-
-
-
-
 }
