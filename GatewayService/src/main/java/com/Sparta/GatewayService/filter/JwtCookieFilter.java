@@ -27,9 +27,11 @@ public class JwtCookieFilter implements GlobalFilter, Ordered {
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     // Endpoints that return JWT tokens and should have cookies set
-    // Only login endpoint wraps JWT in HttpOnly cookie
+    // These endpoints return JWT tokens that should be converted to HttpOnly cookies
     private static final List<String> AUTH_ENDPOINTS = Arrays.asList(
-            "/account/auth/login"
+            "/account/auth/login",
+            "/account/auth/verify-signup-otp",
+            "/account/auth/verify-forgot-password-otp"
     );
 
     @Override

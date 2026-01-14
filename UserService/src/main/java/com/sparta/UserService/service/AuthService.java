@@ -314,7 +314,10 @@ public class AuthService {
         // Delete Redis entry after successful verification
         redisTemplate.delete(redisKey);
 
-        // Return user details
+        // Generate JWT token
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+
+        // Return user details with JWT token
         Map<String, Object> response = new HashMap<>();
         response.put("user", Map.of(
             "id", user.getId().toString(),
@@ -324,6 +327,7 @@ public class AuthService {
             "username", user.getUsername() != null ? user.getUsername() : ""
         ));
         response.put("message", "OTP verified successfully");
+        response.put("token", token);
         
         return response;
     }

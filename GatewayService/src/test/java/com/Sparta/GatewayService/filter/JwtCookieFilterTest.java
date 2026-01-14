@@ -160,13 +160,15 @@ class JwtCookieFilterTest {
     }
 
     @Test
-    void testFilter_VerifySignupOtpEndpoint_NoCookie() {
-        // Given - verify-signup-otp is no longer processed by JwtCookieFilter (only login is)
+    void testFilter_VerifySignupOtpEndpoint_SetsCookie() {
+        // Given - verify-signup-otp now sets cookie when token is present
         ServerWebExchange exchange = createExchange("/account/auth/verify-signup-otp");
         String responseBody = createJsonResponse(TEST_TOKEN);
         
         GatewayFilterChain chain = mock(GatewayFilterChain.class);
-        when(chain.filter(any())).thenAnswer(invocation -> {
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
             ServerWebExchange ex = invocation.getArgument(0);
             DataBuffer buffer = ex.getResponse().bufferFactory()
                     .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
@@ -180,9 +182,45 @@ class JwtCookieFilterTest {
         StepVerifier.create(result)
                 .verifyComplete();
         
-        // verify-signup-otp should not set cookie (only login does)
-        String setCookieHeader = exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
-        assertNull(setCookieHeader);
+        // verify-signup-otp should now set cookie when token is present
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        assertTrue(setCookieHeader.contains("jwt_token=" + TEST_TOKEN));
+        assertTrue(setCookieHeader.contains("HttpOnly"));
+        assertTrue(setCookieHeader.contains("SameSite=Strict"));
+    }
+
+    @Test
+    void testFilter_VerifyForgotPasswordOtpEndpoint_SetsCookie() {
+        // Given - verify-forgot-password-otp now sets cookie when token is present
+        ServerWebExchange exchange = createExchange("/account/auth/verify-forgot-password-otp");
+        String responseBody = createJsonResponse(TEST_TOKEN);
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        
+        // verify-forgot-password-otp should now set cookie when token is present
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        assertTrue(setCookieHeader.contains("jwt_token=" + TEST_TOKEN));
+        assertTrue(setCookieHeader.contains("HttpOnly"));
+        assertTrue(setCookieHeader.contains("SameSite=Strict"));
     }
 
     @Test
