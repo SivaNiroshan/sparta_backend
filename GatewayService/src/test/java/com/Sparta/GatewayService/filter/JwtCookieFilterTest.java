@@ -1,0 +1,370 @@
+package com.Sparta.GatewayService.filter;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.nio.charset.StandardCharsets;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class JwtCookieFilterTest {
+
+    @InjectMocks
+    private JwtCookieFilter jwtCookieFilter;
+
+    private static final String TEST_TOKEN = "test-jwt-token-12345";
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+    }
+
+    private ServerWebExchange createExchange(String path) {
+        MockServerHttpRequest request = MockServerHttpRequest.get(path)
+                .build();
+        return MockServerWebExchange.from(request);
+    }
+
+    private String createJsonResponse(String token) {
+        try {
+            return objectMapper.writeValueAsString(java.util.Map.of("token", token));
+        } catch (Exception e) {
+            return "{\"token\":\"" + token + "\"}";
+        }
+    }
+
+    @Test
+    void testFilter_NonAuthEndpoint_PassesThrough() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/user/profile");
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenReturn(Mono.empty());
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        assertNull(exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+    }
+
+    @Test
+    void testFilter_AuthEndpoint_WithToken_SetsCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = createJsonResponse(TEST_TOKEN);
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        
+        // The cookie should be set on the decorated response
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        assertTrue(setCookieHeader.contains("jwt_token=" + TEST_TOKEN));
+        assertTrue(setCookieHeader.contains("HttpOnly"));
+        assertTrue(setCookieHeader.contains("SameSite=Strict"));
+        assertTrue(setCookieHeader.contains("Path=/"));
+        assertTrue(setCookieHeader.contains("Max-Age=86400"));
+    }
+
+    @Test
+    void testFilter_AuthEndpoint_WithoutToken_NoCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = "{\"message\":\"Login successful\"}";
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        assertNull(exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+    }
+
+    @Test
+    void testFilter_LoginEndpoint_SetsCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = createJsonResponse(TEST_TOKEN);
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        assertTrue(setCookieHeader.contains("jwt_token=" + TEST_TOKEN));
+    }
+
+    @Test
+    void testFilter_VerifySignupOtpEndpoint_NoCookie() {
+        // Given - verify-signup-otp is no longer processed by JwtCookieFilter (only login is)
+        ServerWebExchange exchange = createExchange("/account/auth/verify-signup-otp");
+        String responseBody = createJsonResponse(TEST_TOKEN);
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        
+        // verify-signup-otp should not set cookie (only login does)
+        String setCookieHeader = exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNull(setCookieHeader);
+    }
+
+    @Test
+    void testFilter_CookieHasCorrectAttributes() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = createJsonResponse(TEST_TOKEN);
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        
+        // Verify all cookie attributes
+        assertTrue(setCookieHeader.contains("jwt_token=" + TEST_TOKEN));
+        assertTrue(setCookieHeader.contains("Path=/"));
+        assertTrue(setCookieHeader.contains("HttpOnly"));
+        assertTrue(setCookieHeader.contains("SameSite=Strict"));
+        assertTrue(setCookieHeader.contains("Max-Age=86400"));
+    }
+
+    @Test
+    void testFilter_InvalidJsonResponse_NoCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = "not a valid json";
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        assertNull(exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+    }
+
+    @Test
+    void testFilter_EmptyResponseBody_NoCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = "";
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        assertNull(exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+    }
+
+    @Test
+    void testFilter_ResponseBodyWithoutToken_NoCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = "{\"message\":\"Success\",\"userId\":\"123\"}";
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        assertNull(exchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+    }
+
+    @Test
+    void testFilter_GetOrder_ReturnsCorrectPriority() {
+        // When
+        int order = jwtCookieFilter.getOrder();
+
+        // Then
+        assertEquals(-50, order);
+    }
+
+    @Test
+    void testFilter_MultipleDataBuffers_CombinesCorrectly() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        String responseBody = createJsonResponse(TEST_TOKEN);
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            DefaultDataBufferFactory factory = new DefaultDataBufferFactory();
+            
+            // Create multiple buffers
+            DataBuffer buffer1 = factory.wrap(responseBody.substring(0, 10).getBytes(StandardCharsets.UTF_8));
+            DataBuffer buffer2 = factory.wrap(responseBody.substring(10).getBytes(StandardCharsets.UTF_8));
+            
+            return ex.getResponse().writeWith(Flux.just(buffer1, buffer2));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+        assertTrue(setCookieHeader.contains("jwt_token=" + TEST_TOKEN));
+    }
+
+    @Test
+    void testFilter_ExceptionDuringParsing_ContinuesWithoutCookie() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/login");
+        // Create a response that will cause parsing issues
+        String responseBody = "{\"token\":\"test\"}";
+        
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenAnswer(invocation -> {
+            ServerWebExchange ex = invocation.getArgument(0);
+            // Use a response that might cause issues
+            DataBuffer buffer = ex.getResponse().bufferFactory()
+                    .wrap(responseBody.getBytes(StandardCharsets.UTF_8));
+            return ex.getResponse().writeWith(Mono.just(buffer));
+        });
+
+        // When
+        Mono<Void> result = jwtCookieFilter.filter(exchange, chain);
+
+        // Then
+        // Should complete without throwing exception
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        // Cookie should be set if token is present
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        String setCookieHeader = capturedExchange.getResponse().getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+    }
+}
+

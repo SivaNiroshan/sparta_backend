@@ -8,6 +8,7 @@ import com.sparta.UserService.exception.SignupException;
 import com.sparta.UserService.model.SignupData;
 import com.sparta.UserService.model.UserDetails;
 import com.sparta.UserService.repository.RegisterRepository;
+import com.sparta.UserService.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,9 @@ public class AuthService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private static final String REDIS_SIGNUP_PREFIX = "signup:otp:";
     private static final String REDIS_FORGOT_PASSWORD_PREFIX = "forgot:otp:";
@@ -46,6 +50,9 @@ public class AuthService {
             throw new LoginException("Invalid email or password");
         }
 
+        // Generate JWT token
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+
         Map<String, Object> response = new HashMap<>();
         response.put("user", Map.of(
             "id", user.getId().toString(),
@@ -55,6 +62,7 @@ public class AuthService {
             "username", user.getUsername() != null ? user.getUsername() : ""
         ));
         response.put("message", "Login successful");
+        response.put("token", token);
         
         return response;
     }
@@ -144,6 +152,9 @@ public class AuthService {
         // Delete Redis entry after successful signup
         redisTemplate.delete(redisKey);
 
+        // Generate JWT token
+        String token = jwtUtil.generateToken(savedUser.getId(), savedUser.getEmail());
+
         // Return success response with generated UUID
         Map<String, Object> response = new HashMap<>();
         response.put("user", Map.of(
@@ -154,6 +165,7 @@ public class AuthService {
             "username", savedUser.getUsername() != null ? savedUser.getUsername() : ""
         ));
         response.put("message", "Signup successful");
+        response.put("token", token);
         
         return response;
     }
