@@ -7,9 +7,13 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Configuration
 public class RedisConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(RedisConfig.class);
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
@@ -24,7 +28,23 @@ public class RedisConfig {
         template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
         
+        // Enable transaction support
+        template.setEnableTransactionSupport(false);
+        
         template.afterPropertiesSet();
+        
+        // Test connection
+        try {
+            RedisConnectionFactory factory = template.getConnectionFactory();
+            if (factory != null) {
+                factory.getConnection().ping();
+                logger.info("Redis connection established successfully");
+            }
+        } catch (Exception e) {
+            logger.error("Failed to connect to Redis: {}", e.getMessage());
+            logger.warn("Application will continue but OTP features may not work until Redis is available");
+        }
+        
         return template;
     }
 

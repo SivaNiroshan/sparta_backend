@@ -132,5 +132,56 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> request) {
+        try {
+            String refreshToken = request.get("refreshToken");
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Refresh token is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            }
+            
+            Map<String, Object> response = authService.refreshToken(refreshToken);
+            return ResponseEntity.ok(response);
+        } catch (LoginException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(
+            @RequestBody(required = false) Map<String, String> request,
+            @RequestHeader(value = "X-Access-Token", required = false) String accessTokenHeader,
+            @RequestHeader(value = "X-Refresh-Token", required = false) String refreshTokenHeader) {
+        try {
+            // Extract tokens from request body or headers (GatewayService passes via headers)
+            String accessToken = null;
+            String refreshToken = null;
+            
+            if (request != null) {
+                accessToken = request.get("accessToken");
+                refreshToken = request.get("refreshToken");
+            }
+            
+            // Use headers if body doesn't have tokens (GatewayService passes via headers)
+            if ((accessToken == null || accessToken.isEmpty()) && accessTokenHeader != null && !accessTokenHeader.isEmpty()) {
+                accessToken = accessTokenHeader;
+            }
+            if ((refreshToken == null || refreshToken.isEmpty()) && refreshTokenHeader != null && !refreshTokenHeader.isEmpty()) {
+                refreshToken = refreshTokenHeader;
+            }
+            
+            Map<String, Object> response = authService.logout(accessToken, refreshToken);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Logout failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
 }
 

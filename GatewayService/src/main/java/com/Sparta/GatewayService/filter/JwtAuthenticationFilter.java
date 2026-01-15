@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
@@ -33,7 +34,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/account/auth/verify-forgot-password-otp",
             "/account/auth/resend-signup-otp",
             "/account/auth/resend-forgot-password-otp",
-            "/account/auth/email-exists"
+            "/account/auth/email-exists",
+            "/account/auth/updatepassword",
+            "/account/auth/refresh",
+            "/account/auth/logout"
     );
 
     @Override
@@ -46,8 +50,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // Extract token from cookie
-        String token = extractTokenFromCookie(request);
+        // Extract access token from cookie
+        String token = extractTokenFromCookie(request, "jwt_token");
+        if (token == null || token.isEmpty()) {
+            token = extractTokenFromCookie(request, "access_token");
+        }
 
         // If no token in cookie, try Authorization header as fallback
         if (token == null || token.isEmpty()) {
@@ -57,8 +64,41 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             }
         }
 
+        // Check if token is expired
+        boolean isExpired = false;
+        if (token != null && !token.isEmpty()) {
+            isExpired = jwtUtil.isTokenExpired(token);
+        }
+
+        // If token is expired, try to refresh using refresh token
+        if (isExpired || token == null || token.isEmpty()) {
+            String refreshToken = extractTokenFromCookie(request, "refresh_token");
+            if (refreshToken != null && !refreshToken.isEmpty()) {
+                // Validate refresh token
+                if (jwtUtil.validateRefreshToken(refreshToken) != null) {
+                    // Refresh token is valid, but we can't refresh here
+                    // The client should call /account/auth/refresh endpoint
+                    // For now, we'll allow the request to proceed if refresh token is valid
+                    // The downstream service or client should handle the refresh
+                    // We'll extract user info from refresh token
+                    UUID userId = jwtUtil.getUserIdFromToken(refreshToken);
+                    String email = jwtUtil.getEmailFromToken(refreshToken);
+                    
+                    if (userId != null && email != null) {
+                        ServerHttpRequest modifiedRequest = request.mutate()
+                                .header("X-User-Id", userId.toString())
+                                .header("X-User-Email", email)
+                                .header("X-Token-Expired", "true")
+                                .build();
+                        return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                    }
+                }
+            }
+            return handleUnauthorized(exchange);
+        }
+
         // Validate token
-        if (token == null || token.isEmpty() || jwtUtil.validateToken(token) == null) {
+        if (jwtUtil.validateToken(token) == null) {
             return handleUnauthorized(exchange);
         }
 
@@ -77,7 +117,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith);
     }
 
-    private String extractTokenFromCookie(ServerHttpRequest request) {
+    private String extractTokenFromCookie(ServerHttpRequest request, String cookieName) {
         String cookieHeader = request.getHeaders().getFirst("Cookie");
         if (cookieHeader == null || cookieHeader.isEmpty()) {
             return null;
@@ -86,10 +126,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String[] cookies = cookieHeader.split(";");
         for (String cookie : cookies) {
             String trimmed = cookie.trim();
-            if (trimmed.startsWith("jwt_token=")) {
-                return trimmed.substring("jwt_token=".length());
-            } else if (trimmed.startsWith("access_token=")) {
-                return trimmed.substring("access_token=".length());
+            if (trimmed.startsWith(cookieName + "=")) {
+                return trimmed.substring((cookieName + "=").length());
             }
         }
         return null;

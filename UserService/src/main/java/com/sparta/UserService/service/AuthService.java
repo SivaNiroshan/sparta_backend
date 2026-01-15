@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.Objects;
+import java.util.Date;
 
 @Service
 public class AuthService {
@@ -41,6 +42,7 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private static final String REDIS_SIGNUP_PREFIX = "signup:otp:";
     private static final String REDIS_FORGOT_PASSWORD_PREFIX = "forgot:otp:";
+    private static final String REDIS_BLACKLIST_PREFIX = "blacklist:token:";
     private static final int OTP_EXPIRATION_MINUTES = 5;
 
     public Map<String, Object> login(String email, String password) {
@@ -50,8 +52,9 @@ public class AuthService {
             throw new LoginException("Invalid email or password");
         }
 
-        // Generate JWT token
+        // Generate JWT access token and refresh token
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getEmail());
 
         Map<String, Object> response = new HashMap<>();
         response.put("user", Map.of(
@@ -63,6 +66,7 @@ public class AuthService {
         ));
         response.put("message", "Login successful");
         response.put("token", token);
+        response.put("refreshToken", refreshToken);
         
         return response;
     }
@@ -152,8 +156,9 @@ public class AuthService {
         // Delete Redis entry after successful signup
         redisTemplate.delete(redisKey);
 
-        // Generate JWT token
+        // Generate JWT access token and refresh token
         String token = jwtUtil.generateToken(savedUser.getId(), savedUser.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getId(), savedUser.getEmail());
 
         // Return success response with generated UUID
         Map<String, Object> response = new HashMap<>();
@@ -166,6 +171,7 @@ public class AuthService {
         ));
         response.put("message", "Signup successful");
         response.put("token", token);
+        response.put("refreshToken", refreshToken);
         
         return response;
     }
@@ -314,8 +320,9 @@ public class AuthService {
         // Delete Redis entry after successful verification
         redisTemplate.delete(redisKey);
 
-        // Generate JWT token
+        // Generate JWT access token and refresh token
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getEmail());
 
         // Return user details with JWT token
         Map<String, Object> response = new HashMap<>();
@@ -328,6 +335,7 @@ public class AuthService {
         ));
         response.put("message", "OTP verified successfully");
         response.put("token", token);
+        response.put("refreshToken", refreshToken);
         
         return response;
     }
@@ -430,5 +438,140 @@ public class AuthService {
         response.put("email", email);
         
         return response;
+    }
+
+    /**
+     * Refreshes access token using refresh token
+     * @param refreshToken Refresh token string
+     * @return New access token and refresh token
+     */
+    public Map<String, Object> refreshToken(String refreshToken) {
+        // Check if refresh token is blacklisted
+        if (isTokenBlacklisted(refreshToken)) {
+            throw new LoginException("Refresh token has been revoked");
+        }
+        
+        // Validate refresh token
+        com.auth0.jwt.interfaces.DecodedJWT decoded = jwtUtil.validateRefreshToken(refreshToken);
+        
+        if (decoded == null) {
+            throw new LoginException("Invalid or expired refresh token");
+        }
+
+        // Extract user information from refresh token
+        String userIdStr = decoded.getClaim("userId").asString();
+        String email = decoded.getClaim("email").asString();
+        
+        if (userIdStr == null || email == null) {
+            throw new LoginException("Invalid refresh token");
+        }
+
+        UUID userId;
+        try {
+            userId = UUID.fromString(userIdStr);
+            Objects.requireNonNull(userId, "User ID cannot be null");
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new LoginException("Invalid user ID in refresh token");
+        }
+
+        // Verify user still exists
+        Optional<UserDetails> userOptional = register.findById(userId);
+        if (userOptional.isEmpty()) {
+            throw new LoginException("User not found");
+        }
+
+        UserDetails user = userOptional.get();
+
+        // Generate new access token and refresh token
+        String newToken = jwtUtil.generateToken(user.getId(), user.getEmail());
+        String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getEmail());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", Map.of(
+            "id", user.getId().toString(),
+            "email", user.getEmail(),
+            "firstname", user.getFirstname() != null ? user.getFirstname() : "",
+            "lastname", user.getLastname() != null ? user.getLastname() : "",
+            "username", user.getUsername() != null ? user.getUsername() : ""
+        ));
+        response.put("message", "Token refreshed successfully");
+        response.put("token", newToken);
+        response.put("refreshToken", newRefreshToken);
+        
+        return response;
+    }
+
+    /**
+     * Logs out a user by blacklisting their tokens
+     * @param accessToken Access token to blacklist
+     * @param refreshToken Refresh token to blacklist
+     * @return Success message
+     */
+    public Map<String, Object> logout(String accessToken, String refreshToken) {
+        Map<String, Object> response = new HashMap<>();
+        
+        // Blacklist access token if provided
+        if (accessToken != null && !accessToken.isEmpty()) {
+            try {
+                com.auth0.jwt.interfaces.DecodedJWT decoded = jwtUtil.decodeToken(accessToken);
+                if (decoded != null) {
+                    // Calculate remaining time until token expires
+                    Date expiresAt = decoded.getExpiresAt();
+                    long remainingTime = expiresAt.getTime() - System.currentTimeMillis();
+                    
+                    if (remainingTime > 0) {
+                        // Store in Redis with expiration matching token's remaining lifetime
+                        String blacklistKey = REDIS_BLACKLIST_PREFIX + accessToken;
+                        redisTemplate.opsForValue().set(blacklistKey, "blacklisted", 
+                            remainingTime, TimeUnit.MILLISECONDS);
+                    }
+                }
+            } catch (Exception e) {
+                // If token is invalid or expired, no need to blacklist
+            }
+        }
+        
+        // Blacklist refresh token if provided
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            try {
+                com.auth0.jwt.interfaces.DecodedJWT decoded = jwtUtil.decodeToken(refreshToken);
+                if (decoded != null) {
+                    // Check if it's a refresh token
+                    String type = decoded.getClaim("type").asString();
+                    if ("refresh".equals(type)) {
+                        // Calculate remaining time until token expires
+                        Date expiresAt = decoded.getExpiresAt();
+                        long remainingTime = expiresAt.getTime() - System.currentTimeMillis();
+                        
+                        if (remainingTime > 0) {
+                            // Store in Redis with expiration matching token's remaining lifetime
+                            String blacklistKey = REDIS_BLACKLIST_PREFIX + refreshToken;
+                            redisTemplate.opsForValue().set(blacklistKey, "blacklisted", 
+                                remainingTime, TimeUnit.MILLISECONDS);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // If token is invalid or expired, no need to blacklist
+            }
+        }
+        
+        response.put("message", "Logout successful");
+        return response;
+    }
+
+    /**
+     * Checks if a token is blacklisted
+     * @param token Token to check
+     * @return true if token is blacklisted, false otherwise
+     */
+    public boolean isTokenBlacklisted(String token) {
+        if (token == null || token.isEmpty()) {
+            return false;
+        }
+        
+        String blacklistKey = REDIS_BLACKLIST_PREFIX + token;
+        Object value = redisTemplate.opsForValue().get(blacklistKey);
+        return value != null;
     }
 }
