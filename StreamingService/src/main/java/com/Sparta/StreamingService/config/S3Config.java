@@ -8,6 +8,8 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.net.URI;
+
 @Configuration
 public class S3Config {
 
@@ -20,22 +22,22 @@ public class S3Config {
     @Value("${aws.s3.secret-key:}")
     private String secretKey;
 
+    /** Optional endpoint override for testing (e.g. Testcontainers LocalStack). Leave empty for real AWS. */
+    @Value("${aws.s3.endpoint-override:}")
+    private String endpointOverride;
+
     @Bean
     public S3Client s3Client() {
-        if (accessKey.isEmpty() || secretKey.isEmpty()) {
-            // If credentials are not provided, use default credential provider chain
-            // This will work with IAM roles, environment variables, or AWS credentials file
-            return S3Client.builder()
-                    .region(Region.of(region))
-                    .build();
-        } else {
-            // Use provided credentials
+        var builder = S3Client.builder().region(Region.of(region));
+
+        if (accessKey != null && !accessKey.isEmpty() && secretKey != null && !secretKey.isEmpty()) {
             AwsBasicCredentials awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
-            return S3Client.builder()
-                    .region(Region.of(region))
-                    .credentialsProvider(StaticCredentialsProvider.create(awsCredentials))
-                    .build();
+            builder.credentialsProvider(StaticCredentialsProvider.create(awsCredentials));
         }
+        if (endpointOverride != null && !endpointOverride.isEmpty()) {
+            builder.endpointOverride(URI.create(endpointOverride));
+        }
+        return builder.build();
     }
 }
 
