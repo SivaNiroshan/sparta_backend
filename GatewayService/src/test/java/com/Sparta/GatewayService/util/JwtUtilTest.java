@@ -222,5 +222,140 @@ class JwtUtilTest {
         // Then
         assertNull(result);
     }
+
+    @Test
+    void testValidateRefreshToken_ValidRefreshToken_ReturnsDecodedJWT() {
+        // Given
+        String refreshToken = JWT.create()
+                .withClaim("userId", testUserId.toString())
+                .withClaim("email", testEmail)
+                .withClaim("type", "refresh")
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+                .sign(Algorithm.HMAC256(TEST_SECRET));
+
+        // When
+        DecodedJWT result = jwtUtil.validateRefreshToken(refreshToken);
+
+        // Then
+        assertNotNull(result);
+        assertEquals("refresh", result.getClaim("type").asString());
+        assertEquals(testUserId.toString(), result.getClaim("userId").asString());
+    }
+
+    @Test
+    void testValidateRefreshToken_AccessToken_ReturnsNull() {
+        // Given - token without type="refresh" claim
+        String accessToken = createValidToken(testUserId, testEmail);
+
+        // When
+        DecodedJWT result = jwtUtil.validateRefreshToken(accessToken);
+
+        // Then
+        assertNull(result);
+    }
+
+    @Test
+    void testValidateRefreshToken_InvalidToken_ReturnsNull() {
+        // Given
+        String invalidToken = createTokenWithInvalidSecret(testUserId, testEmail);
+
+        // When
+        DecodedJWT result = jwtUtil.validateRefreshToken(invalidToken);
+
+        // Then
+        assertNull(result);
+    }
+
+    @Test
+    void testValidateRefreshToken_ExpiredToken_ReturnsNull() {
+        // Given
+        String expiredToken = JWT.create()
+                .withClaim("userId", testUserId.toString())
+                .withClaim("email", testEmail)
+                .withClaim("type", "refresh")
+                .withExpiresAt(new Date(System.currentTimeMillis() - 3600000))
+                .sign(Algorithm.HMAC256(TEST_SECRET));
+
+        // When
+        DecodedJWT result = jwtUtil.validateRefreshToken(expiredToken);
+
+        // Then
+        assertNull(result);
+    }
+
+    @Test
+    void testValidateRefreshToken_MalformedToken_ReturnsNull() {
+        // Given
+        String malformedToken = "malformed.refresh.token";
+
+        // When
+        DecodedJWT result = jwtUtil.validateRefreshToken(malformedToken);
+
+        // Then
+        assertNull(result);
+    }
+
+    @Test
+    void testValidateRefreshToken_NullToken_ReturnsNull() {
+        // When
+        DecodedJWT result = jwtUtil.validateRefreshToken(null);
+
+        // Then
+        assertNull(result);
+    }
+
+    @Test
+    void testIsTokenExpired_ValidToken_ReturnsFalse() {
+        // Given
+        String token = createValidToken(testUserId, testEmail);
+
+        // When
+        boolean result = jwtUtil.isTokenExpired(token);
+
+        // Then
+        assertFalse(result);
+    }
+
+    @Test
+    void testIsTokenExpired_ExpiredToken_ReturnsTrue() {
+        // Given
+        String expiredToken = createExpiredToken(testUserId, testEmail);
+
+        // When
+        boolean result = jwtUtil.isTokenExpired(expiredToken);
+
+        // Then
+        assertTrue(result);
+    }
+
+    @Test
+    void testIsTokenExpired_MalformedToken_ReturnsTrue() {
+        // Given
+        String malformedToken = "malformed.token.here";
+
+        // When
+        boolean result = jwtUtil.isTokenExpired(malformedToken);
+
+        // Then
+        assertTrue(result);
+    }
+
+    @Test
+    void testIsTokenExpired_NullToken_ReturnsTrue() {
+        // When
+        boolean result = jwtUtil.isTokenExpired(null);
+
+        // Then
+        assertTrue(result);
+    }
+
+    @Test
+    void testIsTokenExpired_EmptyToken_ReturnsTrue() {
+        // When
+        boolean result = jwtUtil.isTokenExpired("");
+
+        // Then
+        assertTrue(result);
+    }
 }
 

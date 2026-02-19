@@ -383,5 +383,168 @@ class JwtAuthenticationFilterTest {
         assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
         assertEquals("application/json", exchange.getResponse().getHeaders().getFirst(HttpHeaders.CONTENT_TYPE));
     }
+
+    @Test
+    void testFilter_ExpiredToken_WithValidRefreshToken_AllowsAccess() {
+        // Given
+        String expiredAccessToken = createValidToken(testUserId, testEmail);
+        String refreshToken = JWT.create()
+                .withClaim("userId", testUserId.toString())
+                .withClaim("email", testEmail)
+                .withClaim("type", "refresh")
+                .withExpiresAt(new java.util.Date(System.currentTimeMillis() + 3600000))
+                .sign(Algorithm.HMAC256(TEST_SECRET));
+
+        when(jwtUtil.isTokenExpired(expiredAccessToken)).thenReturn(true);
+        when(jwtUtil.validateRefreshToken(refreshToken)).thenReturn(mock(DecodedJWT.class));
+        when(jwtUtil.getUserIdFromToken(refreshToken)).thenReturn(testUserId);
+        when(jwtUtil.getEmailFromToken(refreshToken)).thenReturn(testEmail);
+
+        String cookieHeader = "jwt_token=" + expiredAccessToken + "; refresh_token=" + refreshToken;
+        ServerWebExchange exchange = createExchange("/account/user/profile", cookieHeader, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        
+        ArgumentCaptor<ServerWebExchange> exchangeCaptor = 
+            ArgumentCaptor.forClass(ServerWebExchange.class);
+        when(chain.filter(exchangeCaptor.capture())).thenReturn(Mono.empty());
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        
+        ServerWebExchange capturedExchange = exchangeCaptor.getValue();
+        ServerHttpRequest modifiedRequest = capturedExchange.getRequest();
+        assertEquals(testUserId.toString(), modifiedRequest.getHeaders().getFirst("X-User-Id"));
+        assertEquals(testEmail, modifiedRequest.getHeaders().getFirst("X-User-Email"));
+        assertEquals("true", modifiedRequest.getHeaders().getFirst("X-Token-Expired"));
+    }
+
+    @Test
+    void testFilter_ExpiredToken_WithInvalidRefreshToken_ReturnsUnauthorized() {
+        // Given
+        String expiredAccessToken = createValidToken(testUserId, testEmail);
+        String invalidRefreshToken = "invalid-refresh-token";
+
+        when(jwtUtil.isTokenExpired(expiredAccessToken)).thenReturn(true);
+        when(jwtUtil.validateRefreshToken(invalidRefreshToken)).thenReturn(null);
+
+        String cookieHeader = "jwt_token=" + expiredAccessToken + "; refresh_token=" + invalidRefreshToken;
+        ServerWebExchange exchange = createExchange("/account/user/profile", cookieHeader, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, never()).filter(any());
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    void testFilter_ExpiredToken_NoRefreshToken_ReturnsUnauthorized() {
+        // Given
+        String expiredAccessToken = createValidToken(testUserId, testEmail);
+
+        when(jwtUtil.isTokenExpired(expiredAccessToken)).thenReturn(true);
+
+        String cookieHeader = "jwt_token=" + expiredAccessToken;
+        ServerWebExchange exchange = createExchange("/account/user/profile", cookieHeader, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, never()).filter(any());
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    void testFilter_RefreshEndpoint_IsPublic() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/refresh", null, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenReturn(Mono.empty());
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        verify(jwtUtil, never()).validateToken(anyString());
+    }
+
+    @Test
+    void testFilter_LogoutEndpoint_IsPublic() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/logout", null, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenReturn(Mono.empty());
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        verify(jwtUtil, never()).validateToken(anyString());
+    }
+
+    @Test
+    void testFilter_UpdatePasswordEndpoint_IsPublic() {
+        // Given
+        ServerWebExchange exchange = createExchange("/account/auth/updatepassword", null, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenReturn(Mono.empty());
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, times(1)).filter(any());
+        verify(jwtUtil, never()).validateToken(anyString());
+    }
+
+    @Test
+    void testFilter_RefreshToken_MissingUserId_ReturnsUnauthorized() {
+        // Given
+        String expiredAccessToken = createValidToken(testUserId, testEmail);
+        String refreshToken = JWT.create()
+                .withClaim("email", testEmail)
+                .withClaim("type", "refresh")
+                .withExpiresAt(new java.util.Date(System.currentTimeMillis() + 3600000))
+                .sign(Algorithm.HMAC256(TEST_SECRET));
+
+        when(jwtUtil.isTokenExpired(expiredAccessToken)).thenReturn(true);
+        when(jwtUtil.validateRefreshToken(refreshToken)).thenReturn(mock(DecodedJWT.class));
+        when(jwtUtil.getUserIdFromToken(refreshToken)).thenReturn(null);
+        when(jwtUtil.getEmailFromToken(refreshToken)).thenReturn(testEmail);
+
+        String cookieHeader = "jwt_token=" + expiredAccessToken + "; refresh_token=" + refreshToken;
+        ServerWebExchange exchange = createExchange("/account/user/profile", cookieHeader, null);
+        GatewayFilterChain chain = mock(GatewayFilterChain.class);
+
+        // When
+        Mono<Void> result = jwtAuthenticationFilter.filter(exchange, chain);
+
+        // Then
+        StepVerifier.create(result)
+                .verifyComplete();
+        verify(chain, never()).filter(any());
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+    }
 }
 
