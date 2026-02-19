@@ -13,35 +13,39 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * MongoDB Document for the friends collection.
- * One document per user: id, userId, friends array (friendId, friendUsername).
+ * MongoDB Document for the friend_requests collection.
+ * One document per user: userId, sendRequest array, receiveRequest array.
+ * Each array contains objects with userId and username.
  */
-@Document(collection = "friends")
+@Document(collection = "friend_requests")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FriendDocument {
+public class FriendRequestDocument {
 
     @Id
     private String id;
 
-    /**
-     * Owner of this friend list (user ID from PostgreSQL RDS).
-     */
     private UUID userId;
 
     /**
-     * List of current friends: each entry has friendId and friendUsername.
+     * Requests this user has sent (each entry: userId, username of the recipient).
      */
-    private List<FriendEntry> friends = new ArrayList<>();
+    private List<FriendRequestEntry> sendRequest = new ArrayList<>();
+
+    /**
+     * Requests this user has received (each entry: userId, username of the sender).
+     */
+    private List<FriendRequestEntry> receiveRequest = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public FriendDocument(UUID userId) {
+    public FriendRequestDocument(UUID userId) {
         this.userId = userId;
-        this.friends = new ArrayList<>();
+        this.sendRequest = new ArrayList<>();
+        this.receiveRequest = new ArrayList<>();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }

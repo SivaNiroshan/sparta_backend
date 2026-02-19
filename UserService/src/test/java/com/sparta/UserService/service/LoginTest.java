@@ -33,6 +33,9 @@ class LoginTest {
     @Mock
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
+    @Mock
+    private com.sparta.UserService.util.JwtUtil jwtUtil;
+
     @InjectMocks
     private AuthService authService;
 
@@ -62,6 +65,8 @@ class LoginTest {
     void testLogin_Success() {
         // Arrange
         when(registerRepository.findByEmail(testEmail)).thenReturn(testUser);
+        when(jwtUtil.generateToken(any(UUID.class), anyString())).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(any(UUID.class), anyString())).thenReturn("mock-refresh-token");
 
         // Act
         Map<String, Object> result = authService.login(testEmail, testPassword);
@@ -152,6 +157,8 @@ class LoginTest {
         userWithNulls.setUsername(null);
 
         when(registerRepository.findByEmail(testEmail)).thenReturn(userWithNulls);
+        when(jwtUtil.generateToken(any(UUID.class), anyString())).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(any(UUID.class), anyString())).thenReturn("mock-refresh-token");
 
         // Act
         Map<String, Object> result = authService.login(testEmail, testPassword);

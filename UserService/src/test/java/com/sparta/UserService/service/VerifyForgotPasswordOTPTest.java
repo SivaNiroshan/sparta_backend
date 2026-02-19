@@ -41,6 +41,9 @@ class VerifyForgotPasswordOTPTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private com.sparta.UserService.util.JwtUtil jwtUtil;
+
     @InjectMocks
     private AuthService authService;
 
@@ -82,6 +85,8 @@ class VerifyForgotPasswordOTPTest {
             .thenReturn(forgotPasswordData);
         when(otpService.verifyOTP(correctOTP, correctOTP)).thenReturn(true);
         when(registerRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
+        when(jwtUtil.generateToken(any(UUID.class), anyString())).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(any(UUID.class), anyString())).thenReturn("mock-refresh-token");
 
         // Act
         Map<String, Object> result = authService.verifyForgotPasswordOTP(testEmail, correctOTP);
@@ -257,6 +262,8 @@ class VerifyForgotPasswordOTPTest {
             .thenReturn(forgotPasswordData);
         when(otpService.verifyOTP(correctOTP, correctOTP)).thenReturn(true);
         when(registerRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
+        when(jwtUtil.generateToken(any(UUID.class), anyString())).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(any(UUID.class), anyString())).thenReturn("mock-refresh-token");
 
         // Act
         Map<String, Object> result = authService.verifyForgotPasswordOTP(testEmail, correctOTP);

@@ -13,35 +13,32 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * MongoDB Document for the friends collection.
- * One document per user: id, userId, friends array (friendId, friendUsername).
+ * MongoDB Document for the blocked_friends collection.
+ * One document per user: userId, blockedUsers array (userId, username).
  */
-@Document(collection = "friends")
+@Document(collection = "blocked_friends")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FriendDocument {
+public class BlockedFriendDocument {
 
     @Id
     private String id;
 
-    /**
-     * Owner of this friend list (user ID from PostgreSQL RDS).
-     */
     private UUID userId;
 
     /**
-     * List of current friends: each entry has friendId and friendUsername.
+     * Users blocked by this user (each entry: userId, username).
      */
-    private List<FriendEntry> friends = new ArrayList<>();
+    private List<FriendRequestEntry> blockedUsers = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public FriendDocument(UUID userId) {
+    public BlockedFriendDocument(UUID userId) {
         this.userId = userId;
-        this.friends = new ArrayList<>();
+        this.blockedUsers = new ArrayList<>();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }

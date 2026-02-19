@@ -39,6 +39,9 @@ class VerifySignupOTPTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private com.sparta.UserService.util.JwtUtil jwtUtil;
+
     @InjectMocks
     private AuthService authService;
 
@@ -84,6 +87,8 @@ class VerifySignupOTPTest {
         when(otpService.verifyOTP(correctOTP, correctOTP)).thenReturn(true);
         when(registerRepository.existsByEmail(testEmail)).thenReturn(false);
         when(registerRepository.save(any(UserDetails.class))).thenReturn(savedUser);
+        when(jwtUtil.generateToken(any(UUID.class), anyString())).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(any(UUID.class), anyString())).thenReturn("mock-refresh-token");
 
         // Act
         Map<String, Object> result = authService.verifySignupOTP(testEmail, correctOTP);
@@ -207,6 +212,8 @@ class VerifySignupOTPTest {
         when(otpService.verifyOTP(correctOTP, correctOTP)).thenReturn(true);
         when(registerRepository.existsByEmail(testEmail)).thenReturn(false);
         when(registerRepository.save(any(UserDetails.class))).thenReturn(savedUser);
+        when(jwtUtil.generateToken(any(UUID.class), anyString())).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(any(UUID.class), anyString())).thenReturn("mock-refresh-token");
 
         // Act
         Map<String, Object> result = authService.verifySignupOTP(testEmail, correctOTP);

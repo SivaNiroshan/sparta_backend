@@ -1,8 +1,9 @@
 package com.sparta.UserService.service;
 
-import com.sparta.UserService.model.FriendDocument;
-import com.sparta.UserService.model.UserDetails;
+import com.sparta.UserService.model.*;
+import com.sparta.UserService.repository.BlockedFriendMongoRepository;
 import com.sparta.UserService.repository.FriendMongoRepository;
+import com.sparta.UserService.repository.FriendRequestMongoRepository;
 import com.sparta.UserService.repository.RegisterRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,12 @@ class FriendServiceTest {
     private FriendMongoRepository friendMongoRepository;
 
     @Mock
+    private FriendRequestMongoRepository friendRequestMongoRepository;
+
+    @Mock
+    private BlockedFriendMongoRepository blockedFriendMongoRepository;
+
+    @Mock
     private RegisterRepository registerRepository;
 
     @InjectMocks
@@ -39,6 +46,9 @@ class FriendServiceTest {
     private UserDetails user3;
     private FriendDocument friendDoc1;
     private FriendDocument friendDoc2;
+    private FriendRequestDocument requestDoc1;
+    private FriendRequestDocument requestDoc2;
+    private BlockedFriendDocument blockedDoc1;
 
     @BeforeEach
     void setUp() {
@@ -69,66 +79,67 @@ class FriendServiceTest {
 
         friendDoc1 = new FriendDocument(userId1);
         friendDoc2 = new FriendDocument(userId2);
+        requestDoc1 = new FriendRequestDocument(userId1);
+        requestDoc2 = new FriendRequestDocument(userId2);
+        blockedDoc1 = new BlockedFriendDocument(userId1);
     }
 
     // ========== Add Friend Tests ==========
 
     @Test
     void testAddFriend_Success_SendsRequest() {
-        // Arrange
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
-        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof Map);
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) response.getBody();
-        assertNotNull(body);
         assertEquals("Friend request sent successfully", body.get("message"));
-        assertTrue(friendDoc1.getSentRequests().contains(userId2));
-        assertTrue(friendDoc2.getReceivedRequests().contains(userId1));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(requestDoc1.getSendRequest().stream().anyMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc2.getReceiveRequest().stream().anyMatch(e -> e.getUserId().equals(userId1)));
+        verify(friendRequestMongoRepository, atLeast(1)).save(any(FriendRequestDocument.class));
     }
 
     @Test
     void testAddFriend_Success_AcceptsExistingRequest() {
-        // Arrange
-        friendDoc1.getReceivedRequests().add(userId2);
+        requestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        requestDoc2.getSendRequest().add(new FriendRequestEntry(userId1, "johndoe"));
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
         when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
         when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(friendDoc1.getCurrentFriends().contains(userId2));
-        assertFalse(friendDoc1.getReceivedRequests().contains(userId2));
-        assertTrue(friendDoc2.getCurrentFriends().contains(userId1));
-        assertFalse(friendDoc2.getSentRequests().contains(userId1));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(friendDoc1.getFriends().stream().anyMatch(e -> e.getFriendId().equals(userId2)));
+        assertTrue(friendDoc2.getFriends().stream().anyMatch(e -> e.getFriendId().equals(userId1)));
+        assertTrue(requestDoc1.getReceiveRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc2.getSendRequest().stream().noneMatch(e -> e.getUserId().equals(userId1)));
     }
 
     @Test
     void testAddFriend_UserNotFound() {
-        // Arrange
         when(registerRepository.existsById(userId1)).thenReturn(false);
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("User not found in database", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -136,14 +147,11 @@ class FriendServiceTest {
 
     @Test
     void testAddFriend_FriendNotFound() {
-        // Arrange
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.empty());
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("Friend ID not found in database", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -151,14 +159,11 @@ class FriendServiceTest {
 
     @Test
     void testAddFriend_CannotAddSelf() {
-        // Arrange
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId1);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Cannot add yourself as a friend", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -166,16 +171,14 @@ class FriendServiceTest {
 
     @Test
     void testAddFriend_AlreadyFriend() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("User is already your friend", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -183,16 +186,13 @@ class FriendServiceTest {
 
     @Test
     void testAddFriend_BlockedUser() {
-        // Arrange
-        friendDoc1.getBlockedFriends().add(userId2);
+        blockedDoc1.getBlockedUsers().add(new FriendRequestEntry(userId2, "janesmith"));
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Cannot add blocked user as friend. Unblock first.", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -200,167 +200,119 @@ class FriendServiceTest {
 
     @Test
     void testAddFriend_RequestAlreadySent() {
-        // Arrange
-        friendDoc1.getSentRequests().add(userId2);
+        requestDoc1.getSendRequest().add(new FriendRequestEntry(userId2, "janesmith"));
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Friend request already sent", response.getBody());
-        verify(friendMongoRepository, never()).save(any(FriendDocument.class));
+        verify(friendRequestMongoRepository, never()).save(any(FriendRequestDocument.class));
     }
 
     @Test
     void testAddFriend_CreatesNewDocument() {
-        // Arrange
         when(registerRepository.existsById(userId1)).thenReturn(true);
         when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
-        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
-        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> {
-            FriendDocument doc = invocation.getArgument(0);
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> {
+            FriendRequestDocument doc = invocation.getArgument(0);
             doc.setId("new-id");
             return doc;
         });
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // getOrCreateFriendDocument saves when creating new docs, so we get:
-        // 1. Save for creating user1's doc
-        // 2. Save for creating user2's doc  
-        // 3. Save for updating user1's doc with sent request
-        // 4. Save for updating user2's doc with received request
-        verify(friendMongoRepository, atLeast(2)).save(any(FriendDocument.class));
+        verify(friendRequestMongoRepository, atLeast(1)).save(any(FriendRequestDocument.class));
     }
 
     // ========== Get Current Friends Tests ==========
 
     @Test
     void testGetCurrentFriends_Success() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        friendDoc1.getCurrentFriends().add(userId3);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId3, "bobjohnson"));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-        when(registerRepository.findById(userId3)).thenReturn(Optional.of(user3));
 
-        // Act
         ResponseEntity<?> response = friendService.getCurrentFriends(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> friends = (List<UserDetails>) response.getBody();
-        assertNotNull(friends);
+        List<FriendInfo> friends = (List<FriendInfo>) response.getBody();
         assertEquals(2, friends.size());
-        assertTrue(friends.contains(user2));
-        assertTrue(friends.contains(user3));
+        assertTrue(friends.stream().anyMatch(f -> f.getUserId().equals(userId2) && "janesmith".equals(f.getUsername())));
+        assertTrue(friends.stream().anyMatch(f -> f.getUserId().equals(userId3) && "bobjohnson".equals(f.getUsername())));
     }
 
     @Test
     void testGetCurrentFriends_EmptyList() {
-        // Arrange
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
 
-        // Act
         ResponseEntity<?> response = friendService.getCurrentFriends(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> friends = (List<UserDetails>) response.getBody();
-        assertNotNull(friends);
+        List<FriendInfo> friends = (List<FriendInfo>) response.getBody();
         assertTrue(friends.isEmpty());
     }
 
     @Test
     void testGetCurrentFriends_NoFriends() {
-        // Arrange
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.getCurrentFriends(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> friends = (List<UserDetails>) response.getBody();
-        assertNotNull(friends);
+        List<FriendInfo> friends = (List<FriendInfo>) response.getBody();
         assertTrue(friends.isEmpty());
-    }
-
-    @Test
-    void testGetCurrentFriends_FriendNotFoundInPostgreSQL() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.empty());
-
-        // Act
-        ResponseEntity<?> response = friendService.getCurrentFriends(userId1);
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody() instanceof List);
-        @SuppressWarnings("unchecked")
-        List<UserDetails> friends = (List<UserDetails>) response.getBody();
-        assertNotNull(friends);
-        assertTrue(friends.isEmpty()); // Filtered out non-existent friends
     }
 
     // ========== Get Blocked Friends Tests ==========
 
     @Test
     void testGetBlockedFriends_Success() {
-        // Arrange
-        friendDoc1.getBlockedFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        blockedDoc1.getBlockedUsers().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.getBlockedFriends(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> blocked = (List<UserDetails>) response.getBody();
-        assertNotNull(blocked);
+        List<FriendInfo> blocked = (List<FriendInfo>) response.getBody();
         assertEquals(1, blocked.size());
-        assertEquals(user2, blocked.get(0));
+        assertEquals(userId2, blocked.get(0).getUserId());
+        assertEquals("janesmith", blocked.get(0).getUsername());
     }
 
     @Test
     void testGetBlockedFriends_Empty() {
-        // Arrange
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
 
-        // Act
         ResponseEntity<?> response = friendService.getBlockedFriends(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> blocked = (List<UserDetails>) response.getBody();
-        assertNotNull(blocked);
+        List<FriendInfo> blocked = (List<FriendInfo>) response.getBody();
         assertTrue(blocked.isEmpty());
     }
 
@@ -368,41 +320,31 @@ class FriendServiceTest {
 
     @Test
     void testGetSentRequests_Success() {
-        // Arrange
-        friendDoc1.getSentRequests().add(userId2);
-        friendDoc1.getSentRequests().add(userId3);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-        when(registerRepository.findById(userId3)).thenReturn(Optional.of(user3));
+        requestDoc1.getSendRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        requestDoc1.getSendRequest().add(new FriendRequestEntry(userId3, "bobjohnson"));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.getSentRequests(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> requests = (List<UserDetails>) response.getBody();
-        assertNotNull(requests);
+        List<FriendInfo> requests = (List<FriendInfo>) response.getBody();
         assertEquals(2, requests.size());
     }
 
     @Test
     void testGetSentRequests_Empty() {
-        // Arrange
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
 
-        // Act
         ResponseEntity<?> response = friendService.getSentRequests(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> requests = (List<UserDetails>) response.getBody();
-        assertNotNull(requests);
+        List<FriendInfo> requests = (List<FriendInfo>) response.getBody();
         assertTrue(requests.isEmpty());
     }
 
@@ -410,57 +352,51 @@ class FriendServiceTest {
 
     @Test
     void testGetReceivedRequests_Success() {
-        // Arrange
-        friendDoc1.getReceivedRequests().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        requestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.getReceivedRequests(userId1);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> requests = (List<UserDetails>) response.getBody();
-        assertNotNull(requests);
+        List<FriendInfo> requests = (List<FriendInfo>) response.getBody();
         assertEquals(1, requests.size());
-        assertEquals(user2, requests.get(0));
+        assertEquals(userId2, requests.get(0).getUserId());
+        assertEquals("janesmith", requests.get(0).getUsername());
     }
 
     // ========== Accept Friend Request Tests ==========
 
     @Test
     void testAcceptFriendRequest_Success() {
-        // Arrange
-        friendDoc1.getReceivedRequests().add(userId2);
-        friendDoc2.getSentRequests().add(userId1);
+        requestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        requestDoc2.getSendRequest().add(new FriendRequestEntry(userId1, "johndoe"));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
         when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
         when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.acceptFriendRequest(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(friendDoc1.getCurrentFriends().contains(userId2));
-        assertFalse(friendDoc1.getReceivedRequests().contains(userId2));
-        assertTrue(friendDoc2.getCurrentFriends().contains(userId1));
-        assertFalse(friendDoc2.getSentRequests().contains(userId1));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(friendDoc1.getFriends().stream().anyMatch(e -> e.getFriendId().equals(userId2)));
+        assertTrue(friendDoc2.getFriends().stream().anyMatch(e -> e.getFriendId().equals(userId1)));
+        assertTrue(requestDoc1.getReceiveRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc2.getSendRequest().stream().noneMatch(e -> e.getUserId().equals(userId1)));
     }
 
     @Test
     void testAcceptFriendRequest_NoPendingRequest() {
-        // Arrange
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.acceptFriendRequest(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("No pending friend request from this user", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -470,33 +406,25 @@ class FriendServiceTest {
 
     @Test
     void testRejectFriendRequest_Success() {
-        // Arrange
-        friendDoc1.getReceivedRequests().add(userId2);
-        friendDoc2.getSentRequests().add(userId1);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
-        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        requestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        requestDoc2.getSendRequest().add(new FriendRequestEntry(userId1, "johndoe"));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.rejectFriendRequest(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertFalse(friendDoc1.getReceivedRequests().contains(userId2));
-        assertFalse(friendDoc2.getSentRequests().contains(userId1));
-        assertFalse(friendDoc1.getCurrentFriends().contains(userId2));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(requestDoc1.getReceiveRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc2.getSendRequest().stream().noneMatch(e -> e.getUserId().equals(userId1)));
     }
 
     @Test
     void testRejectFriendRequest_NoPendingRequest() {
-        // Arrange
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.rejectFriendRequest(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("No pending friend request from this user", response.getBody());
     }
@@ -505,120 +433,107 @@ class FriendServiceTest {
 
     @Test
     void testBlockFriend_Success() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        friendDoc2.getCurrentFriends().add(userId1);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc2.getFriends().add(new FriendEntry(userId1, "johndoe"));
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
         when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
+        when(blockedFriendMongoRepository.save(any(BlockedFriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.blockFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(friendDoc1.getBlockedFriends().contains(userId2));
-        assertFalse(friendDoc1.getCurrentFriends().contains(userId2));
-        assertFalse(friendDoc2.getCurrentFriends().contains(userId1));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(blockedDoc1.getBlockedUsers().stream().anyMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(friendDoc1.getFriends().stream().noneMatch(e -> e.getFriendId().equals(userId2)));
+        assertTrue(friendDoc2.getFriends().stream().noneMatch(e -> e.getFriendId().equals(userId1)));
     }
 
     @Test
     void testBlockFriend_AlreadyBlocked() {
-        // Arrange
-        friendDoc1.getBlockedFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        blockedDoc1.getBlockedUsers().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.blockFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("User is already blocked", response.getBody());
-        verify(friendMongoRepository, never()).save(any(FriendDocument.class));
     }
 
     @Test
     void testBlockFriend_RemovesFromRequests() {
-        // Arrange
-        friendDoc1.getSentRequests().add(userId2);
-        friendDoc1.getReceivedRequests().add(userId2);
+        requestDoc1.getSendRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        requestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
         when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(blockedFriendMongoRepository.save(any(BlockedFriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.blockFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(friendDoc1.getBlockedFriends().contains(userId2));
-        assertFalse(friendDoc1.getSentRequests().contains(userId2));
-        assertFalse(friendDoc1.getReceivedRequests().contains(userId2));
+        assertTrue(blockedDoc1.getBlockedUsers().stream().anyMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc1.getSendRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc1.getReceiveRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
     }
 
     // ========== Unblock Friend Tests ==========
 
     @Test
     void testUnblockFriend_Success() {
-        // Arrange
-        friendDoc1.getBlockedFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        blockedDoc1.getBlockedUsers().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
+        when(blockedFriendMongoRepository.save(any(BlockedFriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.unblockFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertFalse(friendDoc1.getBlockedFriends().contains(userId2));
-        verify(friendMongoRepository, times(1)).save(any(FriendDocument.class));
+        assertTrue(blockedDoc1.getBlockedUsers().stream().noneMatch(e -> e.getUserId().equals(userId2)));
     }
 
     @Test
     void testUnblockFriend_NotBlocked() {
-        // Arrange
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.unblockFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("User is not blocked", response.getBody());
-        verify(friendMongoRepository, never()).save(any(FriendDocument.class));
+        verify(blockedFriendMongoRepository, never()).save(any(BlockedFriendDocument.class));
     }
 
     // ========== Remove Friend Tests ==========
 
     @Test
     void testRemoveFriend_Success() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        friendDoc2.getCurrentFriends().add(userId1);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc2.getFriends().add(new FriendEntry(userId1, "johndoe"));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
         when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
         when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.removeFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertFalse(friendDoc1.getCurrentFriends().contains(userId2));
-        assertFalse(friendDoc2.getCurrentFriends().contains(userId1));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(friendDoc1.getFriends().stream().noneMatch(e -> e.getFriendId().equals(userId2)));
+        assertTrue(friendDoc2.getFriends().stream().noneMatch(e -> e.getFriendId().equals(userId1)));
     }
 
     @Test
     void testRemoveFriend_NotFriend() {
-        // Arrange
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.removeFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("User is not your friend", response.getBody());
         verify(friendMongoRepository, never()).save(any(FriendDocument.class));
@@ -628,142 +543,62 @@ class FriendServiceTest {
 
     @Test
     void testSearchFriends_ByUsername() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        friendDoc1.getCurrentFriends().add(userId3);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId3, "bobjohnson"));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-        when(registerRepository.findById(userId3)).thenReturn(Optional.of(user3));
 
-        // Act
         ResponseEntity<?> response = friendService.searchFriends(userId1, "jane");
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
         assertEquals(1, results.size());
-        assertEquals(user2, results.get(0));
-    }
-
-    @Test
-    void testSearchFriends_ByEmail() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-
-        // Act
-        ResponseEntity<?> response = friendService.searchFriends(userId1, "user2");
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody() instanceof List);
-        @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
-        assertEquals(1, results.size());
-    }
-
-    @Test
-    void testSearchFriends_ByFirstname() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-
-        // Act
-        ResponseEntity<?> response = friendService.searchFriends(userId1, "Jane");
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody() instanceof List);
-        @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
-        assertEquals(1, results.size());
-    }
-
-    @Test
-    void testSearchFriends_ByLastname() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
-
-        // Act
-        ResponseEntity<?> response = friendService.searchFriends(userId1, "Smith");
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody() instanceof List);
-        @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
-        assertEquals(1, results.size());
+        assertEquals("janesmith", results.get(0).getUsername());
     }
 
     @Test
     void testSearchFriends_CaseInsensitive() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
 
-        // Act
         ResponseEntity<?> response = friendService.searchFriends(userId1, "JANE");
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
         assertEquals(1, results.size());
     }
 
     @Test
     void testSearchFriends_NoResults() {
-        // Arrange
-        friendDoc1.getCurrentFriends().add(userId2);
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
 
-        // Act
         ResponseEntity<?> response = friendService.searchFriends(userId1, "nonexistent");
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
         assertTrue(results.isEmpty());
     }
 
     @Test
     void testSearchFriends_EmptyFriendsList() {
-        // Arrange
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
 
-        // Act
         ResponseEntity<?> response = friendService.searchFriends(userId1, "test");
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
         assertTrue(results.isEmpty());
     }
 
@@ -771,48 +606,38 @@ class FriendServiceTest {
 
     @Test
     void testCancelSentRequest_Success() {
-        // Arrange
-        friendDoc1.getSentRequests().add(userId2);
-        friendDoc2.getReceivedRequests().add(userId1);
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
-        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        requestDoc1.getSendRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        requestDoc2.getReceiveRequest().add(new FriendRequestEntry(userId1, "johndoe"));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.cancelSentRequest(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertFalse(friendDoc1.getSentRequests().contains(userId2));
-        assertFalse(friendDoc2.getReceivedRequests().contains(userId1));
-        verify(friendMongoRepository, times(2)).save(any(FriendDocument.class));
+        assertTrue(requestDoc1.getSendRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
+        assertTrue(requestDoc2.getReceiveRequest().stream().noneMatch(e -> e.getUserId().equals(userId1)));
     }
 
     @Test
     void testCancelSentRequest_NoPendingRequest() {
-        // Arrange
-        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
 
-        // Act
         ResponseEntity<?> response = friendService.cancelSentRequest(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("No pending sent request to this user", response.getBody());
-        verify(friendMongoRepository, never()).save(any(FriendDocument.class));
+        verify(friendRequestMongoRepository, never()).save(any(FriendRequestDocument.class));
     }
 
     // ========== Exception Handling Tests ==========
 
     @Test
     void testAddFriend_ExceptionHandling() {
-        // Arrange
         when(registerRepository.existsById(userId1)).thenThrow(new RuntimeException("Database error"));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Server error"));
@@ -820,13 +645,10 @@ class FriendServiceTest {
 
     @Test
     void testGetCurrentFriends_ExceptionHandling() {
-        // Arrange
         when(friendMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
 
-        // Act
         ResponseEntity<?> response = friendService.getCurrentFriends(userId1);
 
-        // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Server error"));
@@ -835,53 +657,406 @@ class FriendServiceTest {
     // ========== Edge Cases ==========
 
     @Test
-    void testAddFriend_WithNullFieldsInUser() {
-        // Arrange
-        UserDetails userWithNulls = new UserDetails();
-        userWithNulls.setId(userId2);
-        userWithNulls.setEmail("test@example.com");
-        userWithNulls.setFirstname(null);
-        userWithNulls.setLastname(null);
-        userWithNulls.setUsername(null);
+    void testAddFriend_WithNullUsername() {
+        UserDetails userWithNullUsername = new UserDetails();
+        userWithNullUsername.setId(userId2);
+        userWithNullUsername.setEmail("test@example.com");
+        userWithNullUsername.setUsername(null);
 
         when(registerRepository.existsById(userId1)).thenReturn(true);
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(userWithNulls));
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(userWithNullUsername));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
-        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act
         ResponseEntity<?> response = friendService.addFriend(userId1, userId2);
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    void testSearchFriends_WithNullFields() {
-        // Arrange
-        UserDetails userWithNulls = new UserDetails();
-        userWithNulls.setId(userId2);
-        userWithNulls.setEmail("test@example.com");
-        userWithNulls.setFirstname(null);
-        userWithNulls.setLastname(null);
-        userWithNulls.setUsername("testuser");
-
-        friendDoc1.getCurrentFriends().add(userId2);
+    void testSearchFriends_WithNullUsernameInEntry() {
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "testuser"));
         when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
-        when(registerRepository.findById(userId2)).thenReturn(Optional.of(userWithNulls));
 
-        // Act
-        ResponseEntity<?> response = friendService.searchFriends(userId1, "testuser");
+        ResponseEntity<?> response = friendService.searchFriends(userId1, "nonexistent");
 
-        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof List);
         @SuppressWarnings("unchecked")
-        List<UserDetails> results = (List<UserDetails>) response.getBody();
-        assertNotNull(results);
-        assertEquals(1, results.size());
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void testSearchFriends_WithNullQuery() {
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId3, "bobjohnson"));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+
+        ResponseEntity<?> response = friendService.searchFriends(userId1, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
+        assertEquals(2, results.size());
+    }
+
+    @Test
+    void testSearchFriends_WithEmptyQuery() {
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId3, "bobjohnson"));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+
+        ResponseEntity<?> response = friendService.searchFriends(userId1, "");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
+        assertEquals(2, results.size());
+    }
+
+    @Test
+    void testGetReceivedRequests_Empty() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+
+        ResponseEntity<?> response = friendService.getReceivedRequests(userId1);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> requests = (List<FriendInfo>) response.getBody();
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void testGetReceivedRequests_NoRequests() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+
+        ResponseEntity<?> response = friendService.getReceivedRequests(userId1);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> requests = (List<FriendInfo>) response.getBody();
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void testGetSentRequests_NoRequests() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+
+        ResponseEntity<?> response = friendService.getSentRequests(userId1);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> requests = (List<FriendInfo>) response.getBody();
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void testGetBlockedFriends_NoBlockedUsers() {
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
+
+        ResponseEntity<?> response = friendService.getBlockedFriends(userId1);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> blocked = (List<FriendInfo>) response.getBody();
+        assertTrue(blocked.isEmpty());
+    }
+
+    // ========== Document Creation Tests ==========
+
+    @Test
+    void testAcceptFriendRequest_CreatesNewDocuments() {
+        FriendRequestDocument newRequestDoc1 = new FriendRequestDocument(userId1);
+        newRequestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(newRequestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.acceptFriendRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(friendMongoRepository, atLeast(1)).save(any(FriendDocument.class));
+        verify(friendRequestMongoRepository, atLeast(1)).save(any(FriendRequestDocument.class));
+    }
+
+    @Test
+    void testRejectFriendRequest_CreatesNewDocuments() {
+        FriendRequestDocument newRequestDoc1 = new FriendRequestDocument(userId1);
+        newRequestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(newRequestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.rejectFriendRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(friendRequestMongoRepository, atLeast(1)).save(any(FriendRequestDocument.class));
+    }
+
+    @Test
+    void testBlockFriend_CreatesNewDocuments() {
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(blockedFriendMongoRepository.save(any(BlockedFriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.blockFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(blockedFriendMongoRepository, atLeast(1)).save(any(BlockedFriendDocument.class));
+    }
+
+    @Test
+    void testUnblockFriend_CreatesNewDocument() {
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.empty());
+        when(blockedFriendMongoRepository.save(any(BlockedFriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.unblockFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("User is not blocked", response.getBody());
+    }
+
+    @Test
+    void testRemoveFriend_CreatesNewDocuments() {
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.removeFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(friendMongoRepository, atLeast(1)).save(any(FriendDocument.class));
+    }
+
+    @Test
+    void testCancelSentRequest_CreatesNewDocuments() {
+        FriendRequestDocument newRequestDoc1 = new FriendRequestDocument(userId1);
+        newRequestDoc1.getSendRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(newRequestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.empty());
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.cancelSentRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(friendRequestMongoRepository, atLeast(1)).save(any(FriendRequestDocument.class));
+    }
+
+    // ========== Additional Exception Handling Tests ==========
+
+    @Test
+    void testGetBlockedFriends_ExceptionHandling() {
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.getBlockedFriends(userId1);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testGetSentRequests_ExceptionHandling() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.getSentRequests(userId1);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testGetReceivedRequests_ExceptionHandling() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.getReceivedRequests(userId1);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testAcceptFriendRequest_ExceptionHandling() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.acceptFriendRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testRejectFriendRequest_ExceptionHandling() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.rejectFriendRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testBlockFriend_ExceptionHandling() {
+        when(registerRepository.findById(userId2)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.blockFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testUnblockFriend_ExceptionHandling() {
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.unblockFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testRemoveFriend_ExceptionHandling() {
+        when(friendMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.removeFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testSearchFriends_ExceptionHandling() {
+        when(friendMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.searchFriends(userId1, "test");
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    @Test
+    void testCancelSentRequest_ExceptionHandling() {
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenThrow(new RuntimeException("Database error"));
+
+        ResponseEntity<?> response = friendService.cancelSentRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().toString().contains("Server error"));
+    }
+
+    // ========== Additional Edge Cases ==========
+
+    @Test
+    void testAcceptFriendRequest_AlreadyFriend() {
+        requestDoc1.getReceiveRequest().add(new FriendRequestEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        when(registerRepository.findById(userId1)).thenReturn(Optional.of(user1));
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(user2));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
+        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.acceptFriendRequest(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(requestDoc1.getReceiveRequest().stream().noneMatch(e -> e.getUserId().equals(userId2)));
+    }
+
+    @Test
+    void testBlockFriend_WithNullUsername() {
+        UserDetails userWithNullUsername = new UserDetails();
+        userWithNullUsername.setId(userId2);
+        userWithNullUsername.setUsername(null);
+
+        when(registerRepository.findById(userId2)).thenReturn(Optional.of(userWithNullUsername));
+        when(blockedFriendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(blockedDoc1));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+        when(friendMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(friendDoc2));
+        when(friendRequestMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(requestDoc1));
+        when(friendRequestMongoRepository.findByUserId(userId2)).thenReturn(Optional.of(requestDoc2));
+        when(blockedFriendMongoRepository.save(any(BlockedFriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendMongoRepository.save(any(FriendDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendRequestMongoRepository.save(any(FriendRequestDocument.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<?> response = friendService.blockFriend(userId1, userId2);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(blockedDoc1.getBlockedUsers().stream().anyMatch(e -> e.getUserId().equals(userId2)));
+    }
+
+    @Test
+    void testSearchFriends_PartialMatch() {
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId3, "janedoe"));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+
+        ResponseEntity<?> response = friendService.searchFriends(userId1, "jane");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> results = (List<FriendInfo>) response.getBody();
+        assertEquals(2, results.size());
+    }
+
+    @Test
+    void testGetCurrentFriends_MultipleFriends() {
+        friendDoc1.getFriends().add(new FriendEntry(userId2, "janesmith"));
+        friendDoc1.getFriends().add(new FriendEntry(userId3, "bobjohnson"));
+        friendDoc1.getFriends().add(new FriendEntry(UUID.randomUUID(), "alicewonder"));
+        when(friendMongoRepository.findByUserId(userId1)).thenReturn(Optional.of(friendDoc1));
+
+        ResponseEntity<?> response = friendService.getCurrentFriends(userId1);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        @SuppressWarnings("unchecked")
+        List<FriendInfo> friends = (List<FriendInfo>) response.getBody();
+        assertEquals(3, friends.size());
     }
 }
-
