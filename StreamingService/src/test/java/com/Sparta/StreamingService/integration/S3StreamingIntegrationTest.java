@@ -18,8 +18,14 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
@@ -51,13 +57,17 @@ class S3StreamingIntegrationTest {
         createBucketInLocalStack();
     }
 
-    private static void createBucketInLocalStack() {
-        try (S3Client client = S3Client.builder()
+    private static S3Client buildLocalStackClient() {
+        return S3Client.builder()
                 .endpointOverride(localStack.getEndpointOverride(S3))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
                 .region(Region.of(localStack.getRegion()))
-                .build()) {
+                .build();
+    }
+
+    private static void createBucketInLocalStack() {
+        try (S3Client client = buildLocalStackClient()) {
             client.createBucket(CreateBucketRequest.builder().bucket("sparta-streaming-test-bucket").build());
         }
     }
@@ -67,37 +77,74 @@ class S3StreamingIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Seed test object so list/head tests have something to work with
-        try (S3Client client = S3Client.builder()
-                .endpointOverride(localStack.getEndpointOverride(S3))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-                .region(Region.of(localStack.getRegion()))
-                .build()) {
+        try (S3Client client = buildLocalStackClient()) {
             client.putObject(
                     PutObjectRequest.builder()
                             .bucket("sparta-streaming-test-bucket")
                             .key("videos-test/integration-video-1/manifest.mpd")
+                            .contentType("application/dash+xml")
                             .build(),
                     RequestBody.fromString("<MPD>test</MPD>"));
+            client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket("sparta-streaming-test-bucket")
+                            .key("videos-test/integration-video-1/video/video_720p_dash.mp4")
+                            .contentType("video/mp4")
+                            .build(),
+                    RequestBody.fromBytes("fake video bytes".getBytes(StandardCharsets.UTF_8)));
         }
     }
 
     @Test
     void listAllVideos_returnsVideosFromLocalStack() {
-        var videos = s3Service.listAllVideos();
+        List<String> videos = s3Service.listAllVideos();
         assertThat(videos).contains("integration-video-1");
     }
 
     @Test
+    void listVideoFiles_returnsKeysForVideo() {
+        List<String> files = s3Service.listVideoFiles("integration-video-1");
+        assertThat(files).anyMatch(k -> k.contains("manifest.mpd"));
+        assertThat(files).anyMatch(k -> k.contains("video_720p_dash.mp4"));
+    }
+
+    @Test
     void objectExists_returnsTrueForExistingObject() {
-        boolean exists = s3Service.objectExists("integration-video-1", "manifest.mpd");
-        assertThat(exists).isTrue();
+        assertThat(s3Service.objectExists("integration-video-1", "manifest.mpd")).isTrue();
     }
 
     @Test
     void objectExists_returnsFalseForMissingObject() {
-        boolean exists = s3Service.objectExists("integration-video-1", "nonexistent.mpd");
-        assertThat(exists).isFalse();
+        assertThat(s3Service.objectExists("integration-video-1", "nonexistent.mpd")).isFalse();
+    }
+
+    @Test
+    void getObjectMetadata_returnsSizeAndContentType() {
+        var meta = s3Service.getObjectMetadata("integration-video-1", "manifest.mpd");
+        assertThat(meta.contentLength()).isGreaterThan(0);
+        assertThat(meta.contentType()).isEqualTo("application/dash+xml");
+    }
+
+    @Test
+    void getObject_returnsFullContentWhenNoRange() throws IOException {
+        try (ResponseInputStream<GetObjectResponse> stream = s3Service.getObject("integration-video-1", "manifest.mpd", null, null)) {
+            String body = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(body).isEqualTo("<MPD>test</MPD>");
+        }
+    }
+
+    @Test
+    void getObject_returnsPartialContentWithRange() throws IOException {
+        try (ResponseInputStream<GetObjectResponse> stream = s3Service.getObject("integration-video-1", "manifest.mpd", 1L, 5L)) {
+            String body = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(body).isEqualTo("MPD>t");
+        }
+    }
+
+    @Test
+    void getS3Url_returnsExpectedFormat() {
+        String url = s3Service.getS3Url("integration-video-1", "manifest.mpd");
+        assertThat(url).contains("sparta-streaming-test-bucket");
+        assertThat(url).contains("videos-test/integration-video-1/manifest.mpd");
     }
 }
