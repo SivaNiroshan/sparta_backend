@@ -174,7 +174,7 @@ public class UploadController {
                                           @RequestHeader("Content-Type") String contentType,
                                           InputStream inputStream) throws IOException, InterruptedException {
 
-        if (!"application/offset+octet-stream".equals(contentType)) {
+        if (contentType == null || !contentType.startsWith("application/offset+octet-stream")) {
             return ResponseEntity.badRequest().body("Invalid Content-Type");
         }
 
