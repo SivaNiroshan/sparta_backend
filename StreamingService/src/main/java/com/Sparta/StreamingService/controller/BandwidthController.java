@@ -5,12 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.Map;
 
-/**
- * Controller for bandwidth measurement and testing endpoints
- */
+@Tag(name = "Bandwidth", description = "Bandwidth reporting, quality selection, and statistics")
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/bandwidth")
@@ -24,14 +24,7 @@ public class BandwidthController {
         this.networkQualityService = networkQualityService;
     }
 
-    /**
-     * Endpoint for clients to report their bandwidth measurement
-     * 
-     * @param sessionId Client session identifier
-     * @param bandwidthMbps Measured bandwidth in Mbps
-     * @param clientIp Client IP address (optional, will be extracted from request)
-     * @return Success response
-     */
+    @Operation(summary = "Report bandwidth", description = "Record measured bandwidth for a session; returns recommended quality (1080/720/480)")
     @PostMapping("/report")
     public ResponseEntity<Map<String, Object>> reportBandwidth(
             @RequestParam String sessionId,
@@ -59,13 +52,7 @@ public class BandwidthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Endpoint for clients to report manually selected quality
-     * 
-     * @param sessionId Client session identifier
-     * @param quality Manually selected quality (1080, 720, 480, or null/empty for auto)
-     * @return Success response
-     */
+    @Operation(summary = "Select quality", description = "Set manual quality (1080, 720, 480) or auto for a session. Invalid quality returns 400.")
     @PostMapping("/quality/select")
     public ResponseEntity<Map<String, Object>> selectQuality(
             @RequestParam String sessionId,
@@ -96,12 +83,7 @@ public class BandwidthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get recommended quality for a session
-     * 
-     * @param sessionId Client session identifier
-     * @return Recommended quality information
-     */
+    @Operation(summary = "Get recommended quality", description = "Returns current/average bandwidth and recommended quality for a session, or no_data if unknown.")
     @GetMapping("/quality/{sessionId}")
     public ResponseEntity<Map<String, Object>> getRecommendedQuality(@PathVariable String sessionId) {
         var measurement = networkQualityService.getBandwidthMeasurement(sessionId);
@@ -132,22 +114,14 @@ public class BandwidthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get bandwidth statistics
-     * 
-     * @return Statistics about bandwidth measurements
-     */
+    @Operation(summary = "Get statistics", description = "Returns active session count and average bandwidth (Mbps).")
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics() {
         Map<String, Object> stats = networkQualityService.getStatistics();
         return ResponseEntity.ok(stats);
     }
 
-    /**
-     * Bandwidth test endpoint - serves a small test file for clients to measure bandwidth
-     * 
-     * @return Test data for bandwidth measurement
-     */
+    @Operation(summary = "Bandwidth test", description = "Returns 1 MB test payload (application/octet-stream) for client-side bandwidth measurement.")
     @GetMapping("/test")
     public ResponseEntity<byte[]> bandwidthTest() {
         // Generate a 1MB test payload

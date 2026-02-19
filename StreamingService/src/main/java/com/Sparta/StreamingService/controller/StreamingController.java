@@ -15,9 +15,12 @@ import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+@Tag(name = "Streaming", description = "DASH manifest and video/audio segment delivery from S3")
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/stream")
@@ -35,10 +38,7 @@ public class StreamingController {
         this.s3Service = s3Service;
     }
 
-    /**
-     * Serve DASH manifest file (MPD) from S3
-     * Must be before the catch-all endpoint
-     */
+    @Operation(summary = "Get DASH manifest (MPD)", description = "Returns the manifest.mpd file for the given video ID from S3")
     @GetMapping(value = "/{videoId}/manifest.mpd", produces = "application/dash+xml")
     public ResponseEntity<Resource> getManifest(@PathVariable String videoId) {
         try {
@@ -121,10 +121,7 @@ public class StreamingController {
         }
     }
 
-    /**
-     * Serve video segments from S3 based on quality
-     * Supports automatic quality selection based on network bandwidth
-     */
+    @Operation(summary = "Get video segment", description = "Returns a video segment by quality (e.g. 720, 1080 or 'auto') and filename. Supports Range requests for bandwidth measurement.")
     @GetMapping("/{videoId}/video/{quality}/{filename}")
     public ResponseEntity<Resource> getVideoSegment(
             @PathVariable String videoId,
@@ -249,9 +246,7 @@ public class StreamingController {
         }
     }
 
-    /**
-     * Serve audio segments from S3
-     */
+    @Operation(summary = "Get audio segment", description = "Returns an audio segment file for the given video. Supports Range requests.")
     @GetMapping("/{videoId}/audio/{filename}")
     public ResponseEntity<Resource> getAudioSegment(
             @PathVariable String videoId,
@@ -331,10 +326,7 @@ public class StreamingController {
         }
     }
 
-    /**
-     * Serve any file from S3 (for direct file access from manifest)
-     * This endpoint handles files that are referenced directly in the manifest.mpd
-     */
+    @Operation(summary = "Get file (catch-all)", description = "Serves any file under the video (e.g. segments referenced in manifest). Path traversal (..) is rejected with 400.")
     @GetMapping("/{videoId}/**")
     public ResponseEntity<Resource> getFile(
             @PathVariable String videoId,

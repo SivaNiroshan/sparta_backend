@@ -10,16 +10,15 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Debug controller to help diagnose S3 issues
- * Remove or secure this in production!
- */
+@Tag(name = "Debug S3", description = "S3 debugging: list videos, list files per video, check file existence. Restrict or remove in production.")
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/debug/s3")
@@ -42,9 +41,7 @@ public class S3DebugController {
         this.s3Service = s3Service;
     }
 
-    /**
-     * List all videos in S3
-     */
+    @Operation(summary = "List videos", description = "Returns bucket, basePath, and list of video IDs (folder names) in S3.")
     @GetMapping("/videos")
     public ResponseEntity<Map<String, Object>> listVideos() {
         try {
@@ -84,9 +81,7 @@ public class S3DebugController {
         }
     }
 
-    /**
-     * List files for a specific video
-     */
+    @Operation(summary = "List video files", description = "Returns files (key, size, lastModified) for a video, plus manifestExists and mpdFiles.")
     @GetMapping("/videos/{videoId}/files")
     public ResponseEntity<Map<String, Object>> listVideoFiles(@PathVariable String videoId) {
         try {
@@ -143,9 +138,7 @@ public class S3DebugController {
         }
     }
 
-    /**
-     * Check if a specific file exists
-     */
+    @Operation(summary = "Check file exists", description = "Returns whether the given file path exists for the video in S3 and the expected S3 key.")
     @GetMapping("/check/{videoId}/{filePath}")
     public ResponseEntity<Map<String, Object>> checkFile(
             @PathVariable String videoId,
