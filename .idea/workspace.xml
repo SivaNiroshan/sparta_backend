@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="using dash protocol  video splitting add some naming convention">
+      <change afterPath="$PROJECT_DIR$/GatewayService/FILTER_FLOW_EXPLANATION.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/TESTING_PLAN.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/filter/JwtAuthenticationFilter.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/filter/JwtCookieFilter.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/util/JwtUtil.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/src/test/java/com/Sparta/GatewayService/filter/JwtAuthenticationFilterTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/src/test/java/com/Sparta/GatewayService/filter/JwtCookieFilterTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/GatewayService/src/test/java/com/Sparta/GatewayService/util/JwtUtilTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/StreamingFrontend/NETWORK_SPEED_FEATURE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/StreamingFrontend/QUICK_START.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/StreamingFrontend/README_FRONTEND.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/StreamingService/BANDWIDTH_MEASUREMENT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UserService/AWS_ELASTICACHE_REDIS_SETUP_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UserService/AWS_RDS_SETUP_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UserService/REDIS_CLOUD_SETUP_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/util/JwtUtil.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sparta/front-end/src/auth/ForgotPassword/ForgotPassword.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sparta/front-end/src/auth/Login/Login.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sparta/front-end/src/auth/Signup/Signup.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GatewayService/Dockerfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GatewayService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/GatewayService/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/GatewayServiceApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/GatewayServiceApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/filter/AuthValidationFilter.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GatewayService/src/main/java/com/Sparta/GatewayService/filter/TokenResponseRewriteFilter.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/GatewayService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/GatewayService/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/StreamingService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/StreamingService/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/UploadService/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UserService/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/UserService/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/service/AuthService.java" beforeDir="false" afterPath="$PROJECT_DIR$/UserService/src/main/java/com/sparta/UserService/service/AuthService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UserService/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/UserService/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/.github/workflows/build.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/App.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/routes/userRoute.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/routes/userRoute.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/AboutUs/AboutUS.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/AboutUs/AboutUS.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Feedback/Feedback.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Feedback/Feedback.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Friend/Friend.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Friend/Friend.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/History/History.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/History/History.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Home/Home.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Home/Home.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Layout/Layout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Layout/Layout.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Layout/layoutcomponent/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Layout/layoutcomponent/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Layout/layoutcomponent/Topbar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Layout/layoutcomponent/Topbar.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Notification/Notification.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Notification/Notification.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/src/user/Profile/Profile.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/src/user/Profile/Profile.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sparta/front-end/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/sparta/front-end/tsconfig.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2xN7HrS4ZAmvQIBAhEZrVl6a2zv" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SONARLINT_PRECOMMIT_ANALYSIS&quot;: &quot;false&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/THABENDRA/Desktop/sparta_backend/UploadService/bin/Dash executable/Linux&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\THABENDRA\Desktop\sparta_backend\UploadService\bin\Dash executable\Linux" />
+      <recent name="C:\Users\THABENDRA\Desktop\sparta_backend\UploadService\bin\Dash executable\windows" />
+      <recent name="C:\Users\THABENDRA\Desktop\sparta_backend\UploadService\bin" />
+      <recent name="C:\Users\THABENDRA\Desktop\sparta_backend\UploadService\src\test\java\com\Sparta\UploadService\TusServer" />
+      <recent name="C:\Users\THABENDRA\Desktop\sparta_backend\UserService\bin" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.UploadServiceApplication">
+    <configuration name="EurekaServerApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.sparta.EurekaServer.EurekaServerApplication" />
+      <module name="EurekaServer" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.sparta.EurekaServer.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="GatewayServiceApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.Sparta.GatewayService.GatewayServiceApplication" />
+      <module name="GatewayService" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.Sparta.GatewayService.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="UploadServiceApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.Sparta.UploadService.UploadServiceApplication" />
+      <module name="UploadService" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.Sparta.UploadService.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="UserServiceApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.sparta.UserService.UserServiceApplication" />
+      <module name="UserService" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.sparta.UserService.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="UploadControllerTest" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="UploadService" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.Sparta.UploadService.TusServer.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.Sparta.UploadService.TusServer" />
+      <option name="MAIN_CLASS_NAME" value="com.Sparta.UploadService.TusServer.UploadControllerTest" />
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.UploadServiceApplication" />
+        <item itemvalue="Application.GatewayServiceApplication" />
+        <item itemvalue="Application.EurekaServerApplication" />
+        <item itemvalue="JUnit.UploadControllerTest" />
+        <item itemvalue="Application.UserServiceApplication" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1792688a-f4ab-49a3-8941-ae56b7b9e268" name="Changes" comment="" />
+      <created>1747766595103</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1747766595103</updated>
+    </task>
+    <task id="LOCAL-00001" summary="basic upload service from get data from front end">
+      <option name="closed" value="true" />
+      <created>1748179991830</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1748179991830</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Upload service updated with buffer pooling , reusing, multi threading">
+      <option name="closed" value="true" />
+      <created>1748525821160</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1748525821160</updated>
+    </task>
+    <task id="LOCAL-00003" summary="upload service pause and Resume basic handled">
+      <option name="closed" value="true" />
+      <created>1748693730302</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1748693730302</updated>
+    </task>
+    <task id="LOCAL-00004" summary="upload service PauseResume Handler Modified, Delete Handler added">
+      <option name="closed" value="true" />
+      <created>1748762200587</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1748762200587</updated>
+    </task>
+    <task id="LOCAL-00005" summary="upload service CRUD for uploading finish">
+      <option name="closed" value="true" />
+      <created>1751652200967</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1751652200967</updated>
+    </task>
+    <task id="LOCAL-00006" summary="uploading CRUD of upload and Encoding finish">
+      <option name="closed" value="true" />
+      <created>1751725611120</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1751725611122</updated>
+    </task>
+    <task id="LOCAL-00007" summary="queue service implemented">
+      <option name="closed" value="true" />
+      <created>1752124444433</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1752124444434</updated>
+    </task>
+    <task id="LOCAL-00008" summary="meta request serialized">
+      <option name="closed" value="true" />
+      <created>1752125786213</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1752125786213</updated>
+    </task>
+    <task id="LOCAL-00009" summary="meta data stored in local mongodb">
+      <option name="closed" value="true" />
+      <created>1752167400361</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1752167400361</updated>
+    </task>
+    <task id="LOCAL-00010" summary="remove eureka client and encode multiple resolution">
+      <option name="closed" value="true" />
+      <created>1752419134694</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1752419134694</updated>
+    </task>
+    <task id="LOCAL-00011" summary="using dash protocol  video splitting">
+      <option name="closed" value="true" />
+      <created>1754142634089</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1754142634090</updated>
+    </task>
+    <task id="LOCAL-00012" summary="using dash protocol  video splitting add some naming convention">
+      <option name="closed" value="true" />
+      <created>1754149282065</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1754149282066</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="Tha-01" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="basic upload service from get data from front end" />
+    <MESSAGE value="Upload service updated with buffer pooling , reusing, multi threading" />
+    <MESSAGE value="upload service pause and Resume basic handled" />
+    <MESSAGE value="upload service PauseResume Handler Modified, Delete Handler added" />
+    <MESSAGE value="upload service CRUD for uploading finish" />
+    <MESSAGE value="uploading CRUD of upload and Encoding finish" />
+    <MESSAGE value="queue service implemented" />
+    <MESSAGE value="meta request serialized" />
+    <MESSAGE value="meta data stored in local mongodb" />
+    <MESSAGE value="remove eureka client and encode multiple resolution" />
+    <MESSAGE value="using dash protocol  video splitting" />
+    <MESSAGE value="using dash protocol  video splitting add some naming convention" />
+    <option name="LAST_COMMIT_MESSAGE" value="using dash protocol  video splitting add some naming convention" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
